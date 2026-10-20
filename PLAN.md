@@ -31,6 +31,16 @@ Changes from the first draft, so the reasoning isn't lost:
 - Ranges added for every parameter. `angleDiff` sign convention, mode-transition timing, corner wall normals, the margin origin, tiny bounds, test 17 censoring and test 25 start phase are now specified.
 - The repository root is the current folder, not `fly-sprite/`.
 
+### Revision notes (rev 4, after the M2 gate — user decision)
+
+The M2 procedural fly was judged not good enough: the head floated off the thorax, the motion looked jittery, the legs moved too fast to see, and it looked nothing like the 3D NeuroMechFly model. A feasibility spike (FlyGym 2.1.0, MuJoCo 3.9.0, recorded "Spotlight" walking replayed in NeuroMechFly, rendered overhead) showed the sprite route can meet the standard. Changes:
+- **Sprite-first.** The FlyGym sprite is the intended look; the procedural renderer is a fallback only (§4.9).
+- **Defaults:** `size` 48 → 96 px; `speed` 2.5 → 1.2 BL/s (§4.2). Real flies walk ~6 BL/s with legs stepping at ~11 Hz, which is ~5 display frames per step at 60 Hz, too fast to see individual legs. 1.2 BL/s is deliberate slow motion (~0.2× real time, ~3–4 steps/s). At 48 px the legs are 1–2 px hairlines; ~96 px is needed to resemble the 3D model.
+- **Smooth heading noise (§4.4).** White-noise heading diffusion moved the body ~6.6° at random every frame at 60 Hz. Heading noise now comes from an Ornstein–Uhlenbeck angular velocity with correlation time `headingTau` (new param), which keeps the same long-run diffusion coefficient but has no frame-to-frame twitch.
+- **Walking data (M3/M4):** kinematic replay of FlyGym's recorded walking snippet (tutorial 2, `flygym_demo.spotlight_data`), not a synthetic controller. The CPG controller (tutorial 4a) is the fallback if the loop-seam test can't be met with recorded data.
+- **Sheet:** 16 frames per stride (was 12). PNG is quantised; WebP may be lossy or near-lossless to meet its budget (lossless WebP was 3–4× larger than quantised PNG in the spike).
+- **Scheduling.** The runtime changes (§4.2 defaults, §4.4 heading noise, §4.9 head fix and the affected tests) are implemented in **M5**. Until then the code follows rev 3.
+
 ---
 
 ## 1. Target deliverables
@@ -41,8 +51,8 @@ dist/
   fly.min.js           # minified version of the above (budget: ≤ 8 KB gzipped)
   fly.inline.min.js    # same, with the sprite sheet embedded as a data URI (true single-file drop-in)
   fly.esm.js           # ES module build: export { create, version }
-  fly-sheet.webp       # sprite sheet (budget: ≤ 30 KB)
-  fly-sheet.png        # PNG fallback (budget: ≤ 40 KB)
+  fly-sheet.webp       # sprite sheet (budget: ≤ 30 KB; lossy/near-lossless allowed)
+  fly-sheet.png        # PNG fallback (budget: ≤ 40 KB; palette-quantised)
   fly-sheet.json       # sheet metadata (also embedded in the JS bundles)
 demo/
   index.html           # demo page with a live parameter panel and debug overlay
@@ -162,7 +172,9 @@ browserfly/
 
 ### 4.1 State per fly
 
-`{ x, y, theta, thetaUnwrapped, mode, speedMul, stopTimer, lingerTimer, arrivalArmed, targetTheta, phase, clip, frame, idleTimer }`
+`{ x, y, theta, thetaUnwrapped, omega, mode, speedMul, stopTimer, lingerTimer, arrivalArmed, targetTheta, phase, clip, frame, idleTimer }`
+
+`omega` (rev 4) is the heading-noise angular velocity (rad/s) of the Ornstein–Uhlenbeck process in §4.4.
 
 `mode` is one of `'run'`, `'stop'` or `'reorient'`. `clip` is the animator's current clip (`'walk'`, `'idle'` or `'turn'`). `arrivalArmed` is a boolean and starts as `true`. `phase` is always stored in [0, 1).
 
@@ -171,14 +183,15 @@ browserfly/
 | Param | Default | Units / range | Meaning |
 |---|---|---|---|
 | `count` | 1 | int 1–50 | number of flies |
-| `size` | 48 | px, 8–200 | rendered body length |
-| `speed` | 2.5 | BL/s, 0.1–20 | mean run speed |
+| `size` | 96 | px, 8–200 | rendered body length (rev 4: was 48) |
+| `speed` | 1.2 | BL/s, 0.1–20 | mean run speed (rev 4: was 2.5; deliberate slow motion, real flies ≈ 6 BL/s) |
 | `speedJitter` | 0.15 | 0–0.5 | SD of the per-run speed multiplier: `speedMul = clamp(1 + speedJitter·N(0,1), 0.6, 1.4)` |
 | `runMean` | 2.5 | s, 0.1–60 | mean run duration with no cursor influence |
 | `stopProbability` | 0.7 | 0–1 | chance that a run ends in a stop rather than an immediate reorientation |
 | `stopMean` | 1.2 | s, 0.05–30 | mean stop duration |
 | `stopDistribution` | `'lognormal'` | `'exp'` \| `'lognormal'` | lognormal uses σ = 0.6 and μ = ln(`stopMean`) − σ²/2, so the mean equals `stopMean` |
-| `rotDiffusion` | 0.4 | rad²/s, 0–10 | heading diffusion during runs |
+| `rotDiffusion` | 0.4 | rad²/s, 0–10 | long-run heading diffusion during runs |
+| `headingTau` | 0.3 | s, 0.02–2 | correlation time of the heading noise (rev 4) |
 | `turnRate` | 5 | rad/s, 0.5–30 | max angular speed while reorienting |
 | `attraction` | 0.3 | −1 to 1 | cursor attraction; negative means repulsion |
 | `attractionRange` | 400 | px, 10–5000 | falloff length scale R (deliberately in px, not BL, because the cursor lives in screen space) |
@@ -218,8 +231,11 @@ Let `d` be the distance from the fly to the cursor and `φ` the angle from the f
 
 1. Clamp `dt` to at most 0.05 s. A larger gap (for example, a tab returning from the background) runs as a single clamped step. It is not looped.
 2. **mode `run`:**
-   - Heading update (Euler–Maruyama):
-     `θ += [steeringGain · s · sin(φ − θ) + wallSteer] · dt + sqrt(2 · rotDiffusion · dt) · N(0,1)`
+   - Heading noise (rev 4): an Ornstein–Uhlenbeck angular velocity, updated exactly:
+     `omega = omega · e^(−dt/τ) + sqrt((rotDiffusion/τ) · (1 − e^(−2dt/τ))) · N(0,1)`, with `τ = headingTau`.
+     Its stationary SD is `sqrt(rotDiffusion/τ)` and the long-run heading diffusion coefficient is `rotDiffusion`. On entering `run`, draw `omega` from the stationary distribution, `sqrt(rotDiffusion/τ) · N(0,1)`, so a run starts statistically stationary.
+   - Heading update: `θ += [steeringGain · s · sin(φ − θ) + wallSteer + omega] · dt`, using `omega` after its update.
+   - *(Rev 3 and earlier used white noise, `θ += drift · dt + sqrt(2 · rotDiffusion · dt) · N(0,1)`. That is correct for diffusion but makes the body twitch every frame.)*
    - Position: `x += v cos θ · dt`, `y += v sin θ · dt`, where `v = speed · sizePx · speedMul`.
    - Run-ending hazard: `λ = (1/runMean) · clamp(1 − klinokinesis · s · cos(φ − θ), 0.1, 3)`. The run ends with probability `1 − exp(−λ·dt)`. When the fly is heading toward an attractive cursor, `cos > 0` lowers the hazard, so runs get longer. (With the public ranges the factor stays within [0.1, 1.9], so the clamp is only a safety net.)
    - **Arrival re-arming:** if `arrivalArmed` is false and the cursor is null or `d > 2 · arrivalRadius · sizePx`, set `arrivalArmed = true`.
@@ -298,13 +314,15 @@ Swarm.debug() → { flies: FlyState[], cursor, bounds, fps }   // read-only snap
 
 ### 4.9 Procedural renderer (`render-procedural.js`)
 
+*Rev 4: fallback only, used before the sheet loads or if it fails. The head must overlap the thorax (the M2 version left a 0.08 BL gap).*
+
 - Draw a top-down fly facing up: ellipses for the head, thorax and abdomen (with 3–4 faint abdominal bands), two red eye ellipses, and two translucent folded wings over the abdomen.
 - Legs: six legs, each a 2-segment polyline. Tripods are {L1, R2, L3} and {R1, L2, R3}, half a cycle apart.
   - Each foot's fore–aft offset follows a stance/swing waveform driven by `phase`, with a stance fraction of 0.6.
   - During stance, the foot moves backward relative to the body, linearly.
   - During swing, it moves forward with a slight lateral lift outward.
 - Line width scales with `size`, with a minimum of 1 px.
-- This must look acceptable on its own, since it is a shippable mode.
+- It must look acceptable on its own, since it is shipped as the fallback.
 
 ---
 
@@ -421,7 +439,8 @@ Swarm.debug() → { flies: FlyState[], cursor, bounds, fps }   // read-only snap
 
   Record the findings in `pipeline/README.md`.
 - Render about 1 s of steady walking from directly overhead at high resolution (≥ 512 px across the body). Save a handful of frames.
-- Produce `contact_sheet.py` output: those frames downscaled to body lengths of **32, 48, 64 and 96 px**. Make three versions of each: plain area-averaged, area-averaged plus a 1 px dark outline, and with thickened leg geoms re-rendered. Show each at 1× and 4× zoom (nearest-neighbour for the zoomed view).
+  *Rev 4 starting point (from the spike):* FlyGym 2.1.0 has no walking controller in the package. Use kinematic replay of the recorded walking snippet (`flygym_demo.spotlight_data.MotionSnippet`, 2 s at 330 Hz) through position actuators with leg adhesion, as in tutorial 2. On macOS MuJoCo renders headless with its default CGL backend. Compiled camera names are namespaced by the fly name (e.g. `nmf/topcam`); looking one up by its bare name returns −1, which silently renders MuJoCo's default free camera. The default wing colour (lavender) needs recolouring.
+- Produce `contact_sheet.py` output: those frames downscaled to body lengths of **32, 48, 64, 96 and 128 px** (rev 4: 128 added; body length excludes the wings). Make three versions of each: plain area-averaged, area-averaged plus a 1 px dark outline, and with thickened leg geoms re-rendered. Show each at 1× and 4× zoom (nearest-neighbour for the zoomed view).
 
 **Acceptance:** `pipeline/out/phase0_contact_sheet.png` exists. 🚦 **Gate:** show it to the user and ask them to choose:
 - (a) proceed with 3D sprites at size X with treatment Y;
@@ -442,7 +461,7 @@ Proceed only if option (a) was chosen.
    - Optionally render a second run with asymmetric descending drive for a `turn` clip, and a standing still sequence for `idle`.
 2. `extract_cycle.py`
    - Estimate the stride period from the phase signal (zero crossings, or autocorrelation peak).
-   - Pick one complete cycle from the steady section. Resample it to N frames, where N is configurable (default 12), evenly spaced in phase.
+   - Pick one complete cycle from the steady section. Resample it to N frames, where N is configurable (default 16, rev 4), evenly spaced in phase. The source is the recorded walking replay; if the loop-seam test (pipeline test 2) can't be met with recorded data, report it and offer the CPG controller as the alternative.
    - Compute `strideBL` as the body displacement over that cycle divided by body length. Get body length from the model geometry in mm.
 3. `align_frames.py`
    - Build the alpha mask from the segmentation (all fly geoms), with soft alpha for the wings if feasible.
@@ -477,6 +496,7 @@ Proceed only if option (a) was chosen.
 ### M5 — Sprite renderer integration
 
 **Tasks**
+- **Rev 4 runtime changes.** Update the §4.2 defaults (`size` 96, `speed` 1.2, new `headingTau`), implement the OU heading noise (§4.4), and fix the procedural head (§4.9). Update the unit tests: test 11 expects `Var(Δθ(t)) = 2·D·(t − τ·(1 − e^(−t/τ)))` for a stationary start (same tolerance); tests that relied on the old default speed or size pin those values explicitly, so their criteria are unchanged. Rerun `npm run test:sweep`.
 - Implement `sheet.js`, which loads and validates the metadata and decodes the image with `img.decode()`, and `render-sprite.js`.
 - Draw with `translate(x, y)` → `rotate(θ + π/2)` → `scale(size / bodyLengthPx)` → `drawImage(frame)`, offset by the anchor. Keep `imageSmoothingEnabled = true` and quality `'high'`.
 - Draw the procedural fly until the sheet has loaded, then switch seamlessly.
