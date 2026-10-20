@@ -31,6 +31,10 @@ Changes from the first draft, so the reasoning isn't lost:
 - Ranges added for every parameter. `angleDiff` sign convention, mode-transition timing, corner wall normals, the margin origin, tiny bounds, test 17 censoring and test 25 start phase are now specified.
 - The repository root is the current folder, not `fly-sprite/`.
 
+### Revision notes (rev 5, after M6 — user decision)
+
+The user tuned the defaults in the demo: `size` 25, `stopProbability` 0.09, `rotDiffusion` 0.5, `attraction` 0.1, `attractionRange` 219, `touchTargetTimeout` 5 (§4.2). The statistical unit tests keep the engine values their criteria were designed at (`STATS_BASE` in `test/unit/helpers.js`), so every criterion is unchanged.
+
 ### Revision notes (rev 4, after the M2 gate — user decision)
 
 The M2 procedural fly was judged not good enough: the head floated off the thorax, the motion looked jittery, the legs moved too fast to see, and it looked nothing like the 3D NeuroMechFly model. A feasibility spike (FlyGym 2.1.0, MuJoCo 3.9.0, recorded "Spotlight" walking replayed in NeuroMechFly, rendered overhead) showed the sprite route can meet the standard. Changes:
@@ -183,18 +187,18 @@ browserfly/
 | Param | Default | Units / range | Meaning |
 |---|---|---|---|
 | `count` | 1 | int 1–50 | number of flies |
-| `size` | 96 | px, 8–200 | rendered body length (rev 4: was 48) |
+| `size` | 25 | px, 8–200 | rendered body length (rev 5: user default; rev 4: 96; rev 3: 48) |
 | `speed` | 1.2 | BL/s, 0.1–20 | mean run speed (rev 4: was 2.5; deliberate slow motion, real flies ≈ 6 BL/s) |
 | `speedJitter` | 0.15 | 0–0.5 | SD of the per-run speed multiplier: `speedMul = clamp(1 + speedJitter·N(0,1), 0.6, 1.4)` |
 | `runMean` | 2.5 | s, 0.1–60 | mean run duration with no cursor influence |
-| `stopProbability` | 0.7 | 0–1 | chance that a run ends in a stop rather than an immediate reorientation |
+| `stopProbability` | 0.09 | 0–1 | chance that a run ends in a stop rather than an immediate reorientation (rev 5: was 0.7) |
 | `stopMean` | 1.2 | s, 0.05–30 | mean stop duration |
 | `stopDistribution` | `'lognormal'` | `'exp'` \| `'lognormal'` | lognormal uses σ = 0.6 and μ = ln(`stopMean`) − σ²/2, so the mean equals `stopMean` |
-| `rotDiffusion` | 0.4 | rad²/s, 0–10 | long-run heading diffusion during runs |
+| `rotDiffusion` | 0.5 | rad²/s, 0–10 | long-run heading diffusion during runs (rev 5: was 0.4) |
 | `headingTau` | 0.3 | s, 0.02–2 | correlation time of the heading noise (rev 4) |
 | `turnRate` | 5 | rad/s, 0.5–30 | max angular speed while reorienting |
-| `attraction` | 0.3 | −1 to 1 | cursor attraction; negative means repulsion |
-| `attractionRange` | 400 | px, 10–5000 | falloff length scale R (deliberately in px, not BL, because the cursor lives in screen space) |
+| `attraction` | 0.1 | −1 to 1 | cursor attraction; negative means repulsion (rev 5: was 0.3) |
+| `attractionRange` | 219 | px, 10–5000 | falloff length scale R (deliberately in px, not BL, because the cursor lives in screen space) (rev 5: was 400) |
 | `steeringGain` | 3 | rad/s, 0–20 | strength of continuous steering during runs |
 | `kappaMax` | 6 | 0–50 | von Mises concentration at full attraction |
 | `klinokinesis` | 0.5 | 0–0.9 | modulation of run-ending hazard by heading |
@@ -207,7 +211,7 @@ browserfly/
 | `seed` | `null` | uint32 \| null | `null` means a random seed |
 | `reducedMotion` | `'static'` | `'static'` \| `'hide'` \| `'ignore'` | behaviour when `prefers-reduced-motion: reduce` |
 | `sprite` | `'auto'` | `'auto'` \| URL \| `'procedural'` | sprite source |
-| `touchTargetTimeout` | 4 | s, 0–30 | how long a tap acts as the cursor on touch devices |
+| `touchTargetTimeout` | 5 | s, 0–30 | how long a tap acts as the cursor on touch devices (rev 5: was 4) |
 | `debug` | `false` | bool | draw the debug overlay |
 
 `params.js` defines these in a single schema table (default, type, range or allowed values) that also drives validation, data-attribute parsing and the README table. It must clamp out-of-range values (with `console.warn` once per key) and ignore unknown keys with a warning. Data attributes use kebab-case (for example `data-attraction`, `data-run-mean`) and are parsed as numbers or booleans where the schema type says so. Strings are kept for string or enum params. `data-fly` is the auto-init flag, not a param.

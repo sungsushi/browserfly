@@ -16,12 +16,15 @@ export const SIZE = 48;
 export const BIG = { w: 1e6, h: 1e6 };
 
 /**
- * Engine params: defaults overlaid with `over` (not validated, so e.g. Infinity is allowed).
- * `speed` is pinned to the rev 3 default (2.5 BL/s) so the statistical criteria, which were set at
- * that speed, are unchanged by the rev 4 default of 1.2 BL/s. Size is pinned via SIZE.
+ * The engine values the statistical criteria were designed at (PLAN.md rev 3). The public
+ * defaults have since been tuned (rev 4 speed, then the user's choices), so tests pin these to keep
+ * every criterion and its measured margin unchanged. Size is pinned via SIZE.
  */
+export const STATS_BASE = { speed: 2.5, stopProbability: 0.7, rotDiffusion: 0.4, attraction: 0.3, attractionRange: 400 };
+
+/** Engine params: defaults, the statistical baseline, then `over` (not validated, so Infinity is allowed). */
 export function P(over = {}) {
-  return { ...DEFAULTS, speed: 2.5, ...over };
+  return { ...DEFAULTS, ...STATS_BASE, ...over };
 }
 
 /** Var[Δθ(t)] for OU heading noise from a stationary start: 2·D·(t − τ·(1 − e^(−t/τ))). */

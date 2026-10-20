@@ -7,18 +7,18 @@ const oneOf = (def, values) => ({ type: 'enum', default: def, values });
 
 export const SCHEMA = {
   count: int(1, 1, 50),
-  size: num(96, 8, 200),
+  size: num(25, 8, 200),
   speed: num(1.2, 0.1, 20),
   speedJitter: num(0.15, 0, 0.5),
   runMean: num(2.5, 0.1, 60),
-  stopProbability: num(0.7, 0, 1),
+  stopProbability: num(0.09, 0, 1),
   stopMean: num(1.2, 0.05, 30),
   stopDistribution: oneOf('lognormal', ['exp', 'lognormal']),
-  rotDiffusion: num(0.4, 0, 10),
+  rotDiffusion: num(0.5, 0, 10),
   headingTau: num(0.3, 0.02, 2),
   turnRate: num(5, 0.5, 30),
-  attraction: num(0.3, -1, 1),
-  attractionRange: num(400, 10, 5000),
+  attraction: num(0.1, -1, 1),
+  attractionRange: num(219, 10, 5000),
   steeringGain: num(3, 0, 20),
   kappaMax: num(6, 0, 50),
   klinokinesis: num(0.5, 0, 0.9),
@@ -31,7 +31,7 @@ export const SCHEMA = {
   seed: { type: 'seed', default: null, min: 0, max: 4294967295 },
   reducedMotion: oneOf('static', ['static', 'hide', 'ignore']),
   sprite: { type: 'sprite', default: 'auto' },
-  touchTargetTimeout: num(4, 0, 30),
+  touchTargetTimeout: num(5, 0, 30),
   debug: { type: 'bool', default: false },
 };
 

@@ -10,7 +10,7 @@ describe('9. params', () => {
   afterEach(() => warn.mockRestore());
 
   it('defaults match the schema table', () => {
-    expect(DEFAULTS.attraction).toBe(0.3);
+    expect(DEFAULTS.attraction).toBe(0.1);
     expect(DEFAULTS.stopDistribution).toBe('lognormal');
     expect(DEFAULTS.container).toBe(null);
     expect(Object.keys(DEFAULTS)).toEqual(Object.keys(SCHEMA));

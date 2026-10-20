@@ -45,6 +45,8 @@
   - Acceptance check: a fresh page with one script tag in a subdirectory, served by `npx serve@14.2.4`: `/sub/` (fly.min.js + sheets) → sprite from `/sub/fly-sheet.webp`, no console messages; `/single/` (fly.inline.min.js only) → sprite, one request.
   - Final sizes: `fly.min.js` 7.97 KB gz (≤ 8), `fly.inline.min.js` 36.25 KB gz (≤ 45), `fly-sheet.webp` 26.7 KB (≤ 30), `fly-sheet.png` 31.1 KB (≤ 40).
 
+- **Rev 5 defaults (2026-10-20, user's tuning):** `size` 25, `stopProbability` 0.09, `rotDiffusion` 0.5, `attraction` 0.1, `attractionRange` 219, `touchTargetTimeout` 5. PLAN §4.2 and the README table updated. Unit tests pin the statistical baseline (`STATS_BASE`), so the criteria and the 20/20 sweep still apply unchanged; e2e test 4 pins `size: 96`. `npm test` 89/89, `npm run test:e2e` 72/72.
+
 ## Open issues
 - **CI not verified on GitHub:** no git remote is configured, so the workflow has only been validated (YAML) and its steps run locally.
 - **No licence for this repository's own code** (README says so). FlyGym/NeuroMechFly are Apache-2.0 and credited.

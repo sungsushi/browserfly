@@ -41,7 +41,8 @@ test('3. visible output: the canvas has opaque pixels at the fly', async ({ page
 
 test('4. attraction end-to-end: the fly reaches the arrival radius within 20 s', async ({ page }) => {
   test.setTimeout(40000);
-  await openDemo(page, { seed: 1, attraction: 1 });
+  // Size pinned at the value this criterion was validated with (the default is now 25 px).
+  await openDemo(page, { seed: 1, attraction: 1, size: 96 });
   const snap = await snapshot(page);
   const f = snap.flies[0];
   const { w, h } = snap.bounds;

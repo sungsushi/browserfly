@@ -75,18 +75,18 @@ length (`size`).
 | Option | Data attribute | Default | Values | Description |
 |---|---|---|---|---|
 | `count` | `data-count` | `1` | integer, 1 – 50 | number of flies |
-| `size` | `data-size` | `96` | 8 – 200 | rendered body length (px) |
+| `size` | `data-size` | `25` | 8 – 200 | rendered body length (px) |
 | `speed` | `data-speed` | `1.2` | 0.1 – 20 | mean run speed (BL/s); real flies walk ~6, so the default is slow motion |
 | `speedJitter` | `data-speed-jitter` | `0.15` | 0 – 0.5 | SD of the per-run speed multiplier |
 | `runMean` | `data-run-mean` | `2.5` | 0.1 – 60 | mean run duration with no cursor influence (s) |
-| `stopProbability` | `data-stop-probability` | `0.7` | 0 – 1 | chance that a run ends in a stop rather than an immediate reorientation |
+| `stopProbability` | `data-stop-probability` | `0.09` | 0 – 1 | chance that a run ends in a stop rather than an immediate reorientation |
 | `stopMean` | `data-stop-mean` | `1.2` | 0.05 – 30 | mean stop duration (s) |
 | `stopDistribution` | `data-stop-distribution` | `'lognormal'` | `'exp'`, `'lognormal'` | stop duration distribution |
-| `rotDiffusion` | `data-rot-diffusion` | `0.4` | 0 – 10 | long-run heading diffusion during runs (rad²/s) |
+| `rotDiffusion` | `data-rot-diffusion` | `0.5` | 0 – 10 | long-run heading diffusion during runs (rad²/s) |
 | `headingTau` | `data-heading-tau` | `0.3` | 0.02 – 2 | correlation time of the heading noise (s) |
 | `turnRate` | `data-turn-rate` | `5` | 0.5 – 30 | max angular speed while reorienting (rad/s) |
-| `attraction` | `data-attraction` | `0.3` | -1 – 1 | cursor attraction; negative means repulsion |
-| `attractionRange` | `data-attraction-range` | `400` | 10 – 5000 | cursor falloff length scale (px) |
+| `attraction` | `data-attraction` | `0.1` | -1 – 1 | cursor attraction; negative means repulsion |
+| `attractionRange` | `data-attraction-range` | `219` | 10 – 5000 | cursor falloff length scale (px) |
 | `steeringGain` | `data-steering-gain` | `3` | 0 – 20 | strength of continuous steering during runs (rad/s) |
 | `kappaMax` | `data-kappa-max` | `6` | 0 – 50 | von Mises concentration of reorientation at full attraction |
 | `klinokinesis` | `data-klinokinesis` | `0.5` | 0 – 0.9 | modulation of the run-ending hazard by heading |
@@ -99,7 +99,7 @@ length (`size`).
 | `seed` | `data-seed` | `null` | integer, 0 – 4294967295, or `null` | uint32 seed; null means random |
 | `reducedMotion` | `data-reduced-motion` | `'static'` | `'static'`, `'hide'`, `'ignore'` | behaviour when prefers-reduced-motion: reduce |
 | `sprite` | `data-sprite` | `'auto'` | `'auto'`, `'procedural'` or a URL | 'auto', 'procedural' or a sprite sheet URL |
-| `touchTargetTimeout` | `data-touch-target-timeout` | `4` | 0 – 30 | how long a tap acts as the cursor on touch devices (s) |
+| `touchTargetTimeout` | `data-touch-target-timeout` | `5` | 0 – 30 | how long a tap acts as the cursor on touch devices (s) |
 | `debug` | `data-debug` | `false` | `true`, `false` | draw the debug overlay |
 <!-- params:end -->
 
