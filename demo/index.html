@@ -3,15 +3,27 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Fruit-fly demo</title>
+<title>Of Clouds and Clocks</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
 <style>
   :root { color-scheme: light; --ink: #222; --muted: #666; --panel: rgba(255, 255, 255, 0.94); --line: #ddd; --accent: #8a5a2b; }
   * { box-sizing: border-box; }
-  body { margin: 0; font: 16px/1.6 Georgia, 'Times New Roman', serif; color: var(--ink); background: #faf8f3; }
-  main { max-width: 42rem; margin: 0 auto; padding: 3rem 1.25rem 6rem; }
-  h1 { font-weight: normal; font-size: 2.2rem; margin: 0 0 0.5rem; }
-  #target { font: inherit; padding: 0.6rem 1.2rem; border: 1px solid var(--accent); background: #fff; color: var(--accent); border-radius: 6px; cursor: pointer; }
-  #target:hover { background: #fff5ea; }
+  body { margin: 0; font: 18px/1.75 Lora, Georgia, 'Times New Roman', serif; color: var(--ink); background: #faf8f3;
+    text-rendering: optimizeLegibility; font-kerning: normal; font-variant-ligatures: common-ligatures; }
+  main { max-width: 36rem; margin: 0 auto; padding: 5rem 1.5rem 7rem; }
+  /* Keep the text clear of the fixed parameter panel on wide screens. */
+  @media (min-width: 900px) { main { margin-left: max(1.5rem, calc((100vw - 36rem - 324px) / 2)); } }
+  h1 { font-weight: 400; font-style: italic; font-size: 1.05rem; letter-spacing: 0.02em; color: var(--muted); margin: 0 0 2.5rem; }
+  blockquote { margin: 0; position: relative; hanging-punctuation: first; }
+  blockquote::before { content: '\201C'; position: absolute; left: -0.55em; top: -0.35em; font-size: 4.5rem; line-height: 1; color: rgba(138, 90, 43, 0.22); }
+  blockquote p { margin: 0; text-align: justify; hyphens: auto; -webkit-hyphens: auto; }
+  blockquote p + p { text-indent: 1.5em; }
+  .elision { text-align: center; text-indent: 0; letter-spacing: 0.6em; color: var(--muted); margin: 1.4rem 0 1.4rem 0.6em; }
+  .elision + p { text-indent: 0; }
+  figcaption { margin-top: 2.25rem; text-align: right; font-size: 0.95rem; color: var(--muted); }
+  figcaption cite { font-style: italic; }
   #panel { position: fixed; top: 12px; right: 12px; width: 300px; max-height: calc(100vh - 24px); overflow: auto; z-index: 10;
     background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px;
     font: 12px/1.4 ui-sans-serif, system-ui, sans-serif; box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08); }
@@ -33,23 +45,18 @@
 </head>
 <body>
 <main>
-  <h1>Drosophila melanogaster</h1>
-  <p>The common fruit fly is a small insect, about three millimetres long, that has been one of biology's most studied organisms for more than a century. It walks with an alternating tripod gait: the front and hind legs on one side move together with the middle leg on the other.</p>
-  <p>Walking flies alternate runs with pauses and sharp turns. The flies on this page do the same, and they can be drawn toward the cursor or pushed away from it. Move the pointer around, or use the panel to change how they behave.</p>
-  <p><button id="target" type="button">Click me through the flies</button> <span id="clicks">0 clicks</span></p>
-  <p>Larvae hatch from eggs laid on rotting fruit, feed for a few days, pupate, and emerge as adults about ten days after the egg was laid at room temperature. This short generation time is a large part of why the fly became a model organism.</p>
-  <p>Its genome is compact, its genetics are well mapped, and a whole adult brain has now been reconstructed at synaptic resolution. Simulated bodies such as NeuroMechFly combine that anatomy with physics to study how the nervous system produces walking.</p>
-  <p>Keep scrolling. With <b>anchor: viewport</b> (the default) the flies stay on screen while the text scrolls under them. Switch the panel's anchor to <b>page</b> and they stay where they are on the page instead, scrolling away with the content.</p>
-  <h2>Anatomy</h2>
-  <p>An adult fruit fly has three body parts: a head with large red compound eyes and short antennae, a thorax that carries the six legs and a single pair of wings, and a striped abdomen. Behind the wings sit the halteres, tiny knobbed organs that act as gyroscopes in flight.</p>
-  <p>Each leg has a coxa, trochanter, femur, tibia and a five-segment tarsus ending in claws and adhesive pads, which let flies walk up glass and across ceilings.</p>
-  <h2>Walking</h2>
-  <p>Flies usually walk with a tripod gait: the front and hind legs on one side step together with the middle leg on the other, so three feet are always on the ground. At higher speeds they step about ten to fifteen times a second.</p>
-  <p>Between runs they pause, groom, and turn sharply. Over longer distances, these runs and turns add up to a random walk that can be biased toward attractive odours or away from threats.</p>
-  <h2>Flight</h2>
-  <p>Fruit flies beat their wings about two hundred times a second. They can take off in a few hundredths of a second when startled, choosing a direction away from the looming threat before they leave the ground.</p>
-  <p style="height: 50vh"></p>
-  <p>The end.</p>
+  <h1>Of Clouds and Clocks</h1>
+  <figure style="margin: 0">
+    <blockquote>
+      <p>There are lots of things, natural processes and natural phenomena, which we may place between these two extremes&mdash;the clouds on the left, and the clocks on the right. The changing seasons are somewhat unreliable clocks, and may therefore be put somewhere towards the right, though not too far. I suppose we shall easily agree to put animals not too far from the clouds on the left, and plants somewhat nearer to the clocks. Among the animals, a young puppy will have to be placed further to the left than an old dog. Motor cars, too, will find their place somewhere in our arrangement, according to their reliability: a Cadillac, I suppose, is pretty far over to the right, and even more so a Rolls-Royce, which will be quite close to the best of the clocks. Perhaps furthest to the right should be placed the solar system.</p>
+      <p>As a typical and interesting example of a cloud I shall make some use here of a cloud or cluster of small flies or gnats. Like the individual molecules in a gas, the individual gnats which together form a cluster of gnats move in an astonishingly irregular way. It is almost impossible to follow the flight of any one individual gnat, even though each of them may be quite big enough to be clearly visible.</p>
+      <p class="elision" aria-label="passage omitted">&hellip;</p>
+      <p>Like many physical, biological, and social systems, the cluster of gnats may be described as a &lsquo;whole&rsquo;. Our conjecture that it is kept together by a kind of attraction which its densest part exerts on individual gnats straying too far from the crowd shows that there is even a kind of action or control which this &lsquo;whole&rsquo; exerts upon its elements or parts. Nevertheless, this &lsquo;whole&rsquo; can be used to dispel the widespread &lsquo;holistic&rsquo; belief that a &lsquo;whole&rsquo; is always more than the mere sum of its parts. I do not deny that it may sometimes be so. Yet the cluster of gnats is an example of a whole that is indeed nothing but the sum of its parts&mdash;and in a very precise sense; for not only is it completely described by describing the movements of all the individual gnats, but the movement of the whole is, in this case, precisely the (vectorial) sum of the movements of its constituent members, divided by the number of the members.</p>
+      <p>An example (in many ways similar) of a biological system or &lsquo;whole&rsquo; which exerts some control over the highly irregular movements of its parts would be a picnicking family&mdash;parents with a few children and a dog&mdash;roaming the woods for hours, but never straying far from the family car (which acts like a centre of attraction, as it were). This system may be said to be even more cloudy&mdash;that is, less regular in the movement of its parts&mdash;than our cloud of gnats.</p>
+      <p>I hope you will now have before you an idea of my two prototypes or paradigms, the clouds on the left and the clocks on the right, and of the way in which we can arrange many kinds of things, and many kinds of systems, between them. I am sure you have caught some vague, general idea of the arrangement, and you need not worry if your idea is still a bit foggy, or cloudy.</p>
+    </blockquote>
+    <figcaption>&mdash; Karl Popper, <cite>Of Clouds and Clocks</cite>, Arthur Holly Compton Memorial Lecture, 1965</figcaption>
+  </figure>
 </main>
 
 <aside id="panel">
@@ -95,11 +102,6 @@
   const swarm = Fly.create(options);
   window.swarm = swarm;
 
-  let clicks = 0;
-  document.getElementById('target').addEventListener('click', () => {
-    clicks++;
-    document.getElementById('clicks').textContent = `${clicks} click${clicks === 1 ? '' : 's'}`;
-  });
 
   const SKIP = new Set(['zIndex']);
   const sliders = document.getElementById('sliders');
@@ -153,6 +155,11 @@
     seedBox.value = '';
     refresh();
   });
+  // On narrow screens the panel would cover the text: start collapsed there.
+  if (matchMedia('(max-width: 640px)').matches) {
+    document.getElementById('panel').classList.add('collapsed');
+    document.getElementById('collapse').textContent = '+';
+  }
   document.getElementById('collapse').addEventListener('click', (e) => {
     const p = document.getElementById('panel');
     p.classList.toggle('collapsed');

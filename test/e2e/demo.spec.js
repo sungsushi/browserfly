@@ -19,11 +19,14 @@ test('1. clean load: no console errors, one click-through canvas', async ({ page
   expect(errors).toEqual([]);
 });
 
-test('2. click-through: the button under the canvas receives clicks', async ({ page }) => {
+test('2. click-through: a button under the canvas receives clicks', async ({ page }) => {
+  // The panel's collapse button sits under the fly layer (the canvas has a far higher z-index).
   await openDemo(page, { count: 10, size: 120 });
-  await page.click('#target');
-  await page.click('#target');
-  await expect(page.locator('#clicks')).toHaveText('2 clicks');
+  const panel = page.locator('#panel');
+  await page.click('#collapse');
+  await expect(panel).toHaveClass(/collapsed/);
+  await page.click('#collapse');
+  await expect(panel).not.toHaveClass(/collapsed/);
 });
 
 test('3. visible output: the canvas has opaque pixels at the fly', async ({ page }) => {

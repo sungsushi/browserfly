@@ -56,6 +56,8 @@
   - **M8 gate (2026-10-20):** user approved page anchoring.
   - Tests: `npm test` 90/90 (new anchor params test); `test/e2e/anchor.spec.js` (tests 1–11 + touch) 36/36, ×3 repeats 108/108; full `npm run test:e2e` 108/108. Perf with 20 page-anchored flies: Chromium 0.14, WebKit 0.33, Firefox 1.3 ms/frame.
 
+- **Demo page text (2026-10-20, user request):** the Drosophila intro is replaced by a block quote from Karl Popper's *Of Clouds and Clocks* (1965), typeset in Lora (Google Fonts) on the same background; scan artefacts cleaned (joined hyphenation, em dashes, curly quotes, stray dots, a stray "?" after "solar system", run-together words). The panel starts collapsed on screens ≤ 640 px; on wide screens the text column sits clear of the panel. E2E test 2 (click-through) now clicks the panel's collapse button, which is under the fly layer, instead of the removed demo button. `npm run test:e2e` 108/108.
+
 ## Open issues
 - **CI not verified on GitHub:** no git remote is configured, so the workflow has only been validated (YAML) and its steps run locally.
 - **No licence for this repository's own code** (README says so). FlyGym/NeuroMechFly are Apache-2.0 and credited.
