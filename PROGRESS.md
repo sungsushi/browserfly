@@ -1,6 +1,6 @@
 # Progress
 
-**Current milestone:** M3 — FlyGym feasibility and leg-readability test — ✅ done (committed). 🚦 **Gate:** waiting for the user to choose (a) 3D sprites at size X with treatment Y, (b) procedural only, or (c) renders as reference for hand-cleaned pixel art.
+**Current milestone:** M4 — Sprite pipeline — ✅ tests pass (committed). 🚦 **Gate:** waiting for the user's visual approval of the sheet (`pipeline/out/qa/`).
 
 ## Done
 - **M0** — scaffolding (git, package.json scripts, esbuild/vitest/playwright/eslint configs, serve + sweep scripts).
@@ -24,9 +24,17 @@
   - `pytest pipeline/tests`: 3/3. Gate artefacts (not committed, `pipeline/out/` is ignored): `phase0_contact_sheet.png`, `phase0_preview.html`, `phase0_stats.json`.
   - Measured: stepping 10.8 Hz, 5.1 BL/s real speed, body 2.64 mm, strideBL 0.47. 16-frame 128-colour PNG sheets: 48 px ≈ 11 KB, 96 px ≈ 33 KB, 128 px ≈ 55 KB.
 
+  - **M3 gate (2026-10-20):** user chose (a) 3D sprites, default size 96 px, plain treatment.
+- **M4** — `pipeline/extract_cycle.py`, `align_frames.py`, `build_sheet.py`, `build_all.py`; `render_walk.py` gained orthographic camera, `--poses-only` and `--plan` modes, wings-hidden labels, idle clip; `contact_sheet.py final` (QA image, animated WebP per clip at 1×/4×, HTML preview). Sheet in `dist/fly-sheet.{png,webp,json}`.
+  - `pytest pipeline/tests`: 19/19 (tests 1–7 + dist-matches-pipeline + 3 helper tests), 84 s.
+  - Sheet: 16-frame walk + 2-frame idle, 143×163 frames, anchor [72, 67], 96 px body, strideBL 0.64, 64 colours. PNG 31.1 KB (≤ 40), WebP 26.7 KB (≤ 30). Seam ratio 1.16 (≤ 1.5).
+  - Decisions: camera option B, orthographic; body length = visible length (2.59 mm) rather than mesh-vertex span (2.76 mm); cycle chosen by an image-based seam check; 64 colours to meet the WebP budget; no turn clip.
+  - Test 5's body-length check compares every frame (stricter than the plan's single comparison); it passes.
+
 ## Open issues
-- **Sheet budget at 96 px is tight:** the walk clip alone is ~33 KB of the 40 KB PNG budget before idle frames, and over the 30 KB WebP budget unless lossy. Options for M4: tighter off-centre anchor (frames are 2.2 × BL square), 12 frames, fewer colours, lossy WebP.
-- Loop seam (spike): the recorded stride's seam was 1.9× the median adjacent-frame difference (threshold 1.5×); M4 must pick the cycle carefully or fall back to the CPG controller.
+- Sheet budget: met at 64 colours with ~3 KB WebP headroom. Re-rendering at other settings may need 48 colours (18 KB) or fewer frames.
+- `dist/fly-sheet.webp` now exists, so `npm run build` will also produce `fly.inline.min.js` (budget 45 KB gz, checked in M5/M6).
+- Real speed in the chosen stride is 6.9 BL/s with strideBL 0.64; at the rev 4 default of 1.2 BL/s the legs step at ~1.9 Hz (≈ 32 display frames per stride).
 - Firefox exceeds the 2 ms soft perf budget with 20 flies (headless Firefox canvas is slower; Chromium/WebKit are ~8× under). Candidate optimisations if it matters: cache the static body as an offscreen bitmap per size and only draw legs per frame.
 - **Test 20 at 120 s is not flake-free — accepted by the user (2026-10-20); a lone test 20 failure is a known flake, rerun.** Over 2000 flies the escape time is median 10 s, p99 69 s, max 114 s, with a roughly exponential tail (×~8 less likely per extra 30 s). Estimated failure rate: ~1.5% per run, ~1 in 4 sweeps (seen on base 16). 180 s would be ~0.02% per run.
 - Test 20 does not assert "no stops inside the radius": ordinary run-ending stops (≈2 per fly) happen there under the specified behaviour. It asserts no arrival stop / no lingering (disarmed, `lingerTimer` never increases) until re-armed.

@@ -1,6 +1,7 @@
-"""Phase-0 visual QA (M3): leg readability at web sizes for three treatments.
+"""Visual QA for the sprite pipeline.
 
-Reads two render_walk.py outputs (normal legs and thickened legs) and writes:
+`phase0` (M3): leg readability at web sizes for three treatments. Reads two render_walk.py
+default-mode outputs (normal legs and thickened legs) and writes:
   OUT/phase0_contact_sheet.png  rows: plain, plain + 1 px outline, thickened legs;
                                 columns: body length 32/48/64/96/128 px; each cell shows the
                                 sprite at 1x on a light and a dark page and at 4x (nearest).
@@ -8,7 +9,16 @@ Reads two render_walk.py outputs (normal legs and thickened legs) and writes:
                                 with treatment, size and playback-speed controls.
   OUT/phase0_stats.json         stride frequency, stride length, body length, sheet sizes.
 
-Usage: python pipeline/contact_sheet.py PLAIN_DIR THICK_DIR OUT_DIR [--frames 16]
+`final` (M4): QA of the finished sheet. Reads fly-sheet.json (+ the PNG next to it) and writes:
+  OUT/final_contact.png         the sheet at 1x on light and dark pages, and at 4x (nearest) with
+                                the frame grid and the anchor marked;
+  OUT/<clip>_1x.webp, _4x.webp  animated previews of each clip (walk at the rev 4 default walking
+                                speed, so the stride plays at its on-screen rate; idle at 1 s/frame);
+  OUT/final_preview.html        self-contained page: the sheet walking a path, drawn the way the
+                                runtime will draw it (anchor offset, rotation θ + π/2).
+
+Usage: python pipeline/contact_sheet.py phase0 PLAIN_DIR THICK_DIR OUT_DIR [--frames 16]
+       python pipeline/contact_sheet.py final SHEET_JSON OUT_DIR
 """
 import argparse
 import base64
@@ -26,15 +36,21 @@ PREVIEW_SIZES = [48, 96, 128]
 LIGHT = (250, 248, 243, 255)
 DARK = (35, 35, 40, 255)
 OUTLINE_RGB = (40, 28, 16)
-LABEL_WING = 3
+LABEL_WING = 6  # render_walk.LABELS["wing"]
+DEFAULT_SPEED_BL = 1.2  # PLAN.md rev 4 default walking speed
 
 
 def parse_args():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("plain", type=Path)
-    ap.add_argument("thick", type=Path)
-    ap.add_argument("out", type=Path)
-    ap.add_argument("--frames", type=int, default=16, help="frames per stride in the preview")
+    sub = ap.add_subparsers(dest="cmd", required=True)
+    p0 = sub.add_parser("phase0", help="M3 leg-readability contact sheet and preview")
+    p0.add_argument("plain", type=Path)
+    p0.add_argument("thick", type=Path)
+    p0.add_argument("out", type=Path)
+    p0.add_argument("--frames", type=int, default=16, help="frames per stride in the preview")
+    fin = sub.add_parser("final", help="M4 QA of the finished sprite sheet")
+    fin.add_argument("sheet", type=Path, help="fly-sheet.json")
+    fin.add_argument("out", type=Path)
     return ap.parse_args()
 
 
@@ -232,13 +248,11 @@ requestAnimationFrame(frame);
 </script></body></html>"""
 
 
-def main():
-    args = parse_args()
-    args.out.mkdir(parents=True, exist_ok=True)
+def phase0(args):
     walks = {"plain": Walk(args.plain), "thick": Walk(args.thick)}
     plain = walks["plain"]
-    fps = plain.meta["renderFps"]
-    mm_per_px = plain.meta["mmPerPxAtThorax"]
+    fps = 1 / (plain.meta["simDt"] * plain.meta["every"])
+    mm_per_px = plain.meta["mmPerPx"]
 
     # Steadiest stretch: the 0.4 s window with the least turning; the stride starts there.
     f_step = stride_frequency()
@@ -300,6 +314,134 @@ def main():
     print(json.dumps({k: v for k, v in stats.items() if k != "sheets16"}, indent=1))
     for k, v in sizes_report.items():
         print(f"  {k:12s} frame {v['framePx']:4d}px  16-frame sheet {v['png128Bytes'] / 1024:6.1f} KB")
+
+
+def sheet_frames(meta, sheet):
+    """{clip: [RGBA frame, ...]} cut from the sheet."""
+    w, h = meta["frameWidth"], meta["frameHeight"]
+    return {name: [sheet.crop((k * w, c["row"] * h, (k + 1) * w, (c["row"] + 1) * h)) for k in range(c["frames"])]
+            for name, c in meta["clips"].items()}
+
+
+def save_animation(frames, path, duration_ms, zoom):
+    frames = [f.resize((f.width * zoom, f.height * zoom), Image.NEAREST) for f in frames]
+    frames[0].save(path, save_all=True, append_images=frames[1:], duration=int(round(duration_ms)),
+                   loop=0, lossless=True, background=(0, 0, 0, 0))
+
+
+FINAL_HTML = """<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sprite sheet preview</title>
+<style>
+ :root { --bg:#faf8f3; --ink:#222; --muted:#666; --line:#ddd; }
+ :root[data-theme="dark"] { --bg:#232328; --ink:#eee; --muted:#aaa; --line:#444; }
+ body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.5 system-ui, sans-serif; }
+ main { max-width:1100px; margin:0 auto; padding:16px; }
+ .controls { display:flex; flex-wrap:wrap; gap:10px 20px; align-items:center; margin:8px 0 12px; }
+ canvas { width:100%; height:460px; display:block; border:1px solid var(--line); border-radius:8px; }
+ .note { color:var(--muted); }
+</style></head><body><main>
+<h1 style="font-weight:500;font-size:20px;margin:0">Sprite sheet preview (M4)</h1>
+<p class="note">dist/fly-sheet: __W__×__H__ frames, anchor [__AX__, __AY__], __N__-frame walk (strideBL __STRIDE__), __NI__-frame idle. Every few seconds the fly stops and shows the idle clip.</p>
+<div class="controls">
+ <label>size <select id="size"><option>48</option><option>72</option><option selected>96</option><option>128</option></select> px</label>
+ <label>walk speed <select id="v"><option value="__REAL__">real (__REAL__ BL/s)</option><option value="2.5">2.5 BL/s</option><option value="1.2" selected>1.2 BL/s (default)</option><option value="0.6">0.6 BL/s</option></select></label>
+ <label><input type="checkbox" id="dark"> dark page</label>
+</div>
+<canvas id="c"></canvas>
+</main>
+<script>
+const M = __META__, SRC = "__SRC__";
+const img = new Image(); img.src = SRC;
+const c = document.getElementById('c'), ctx = c.getContext('2d'), $ = (id) => document.getElementById(id);
+$('dark').onchange = () => document.documentElement.dataset.theme = $('dark').checked ? 'dark' : 'light';
+function resize() { const d = devicePixelRatio || 1; c.width = c.clientWidth * d; c.height = c.clientHeight * d; ctx.setTransform(d, 0, 0, d, 0, 0); }
+addEventListener('resize', resize); resize();
+const path = (s, W, H) => ({ x: W / 2 + (W / 2 - 110) * Math.sin(s), y: H / 2 + (H / 2 - 110) * Math.sin(2 * s) / 1.15 });
+let s = 0, phase = 0, last = null, mode = 'walk', timer = 4, idleFrame = 0, idleT = 0;
+function frame(now) {
+  const W = c.clientWidth, H = c.clientHeight;
+  const dt = last === null ? 0 : Math.min(0.05, (now - last) / 1000); last = now;
+  const size = +$('size').value, k = size / M.bodyLengthPx;
+  timer -= dt;
+  if (timer <= 0) { mode = mode === 'walk' ? 'idle' : 'walk'; timer = mode === 'walk' ? 4 + 3 * Math.random() : 1.5 + Math.random(); }
+  let clip = M.clips.walk, f;
+  if (mode === 'walk') {
+    const dist = +$('v').value * size * dt;
+    const p0 = path(s, W, H), p1 = path(s + 1e-3, W, H);
+    s += dist * 1e-3 / Math.hypot(p1.x - p0.x, p1.y - p0.y);
+    phase = (phase + dist / (clip.strideBL * size)) % 1;
+    f = Math.floor(phase * clip.frames);
+  } else {
+    clip = M.clips.idle; idleT -= dt;
+    if (idleT <= 0) { idleFrame = (idleFrame + 1) % clip.frames; idleT = 0.5 + 1.5 * Math.random(); }
+    f = idleFrame;
+  }
+  const p = path(s, W, H), q = path(s + 1e-3, W, H);
+  ctx.clearRect(0, 0, W, H);
+  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+  ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(Math.atan2(q.y - p.y, q.x - p.x) + Math.PI / 2); ctx.scale(k, k);
+  ctx.drawImage(img, f * M.frameWidth, clip.row * M.frameHeight, M.frameWidth, M.frameHeight,
+                -M.anchor[0], -M.anchor[1], M.frameWidth, M.frameHeight);
+  ctx.restore();
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script></body></html>"""
+
+
+def final(args):
+    meta = json.loads(args.sheet.read_text())
+    sheet = Image.open(args.sheet.with_name("fly-sheet.png")).convert("RGBA")
+    w, h = meta["frameWidth"], meta["frameHeight"]
+    ax, ay = meta["anchor"]
+    pad = 20
+    big = sheet.resize((sheet.width * 4, sheet.height * 4), Image.NEAREST)
+    d = ImageDraw.Draw(big)
+    for c in meta["clips"].values():
+        for k in range(c["frames"]):
+            x, y = k * w * 4, c["row"] * h * 4
+            d.rectangle((x, y, x + w * 4 - 1, y + h * 4 - 1), outline=(120, 160, 220, 255))
+            cx, cy = x + ax * 4, y + ay * 4
+            d.line((cx - 10, cy, cx + 10, cy), fill=(220, 40, 120, 255))
+            d.line((cx, cy - 10, cx, cy + 10), fill=(220, 40, 120, 255))
+    W = max(big.width, 2 * sheet.width + pad) + 2 * pad
+    H = 2 * sheet.height + big.height + 5 * pad + 30
+    out = Image.new("RGBA", (W, H), LIGHT)
+    ImageDraw.Draw(out).text((pad, pad), f"fly-sheet: {w}x{h} frames, anchor {meta['anchor']}, body "
+                             f"{meta['bodyLengthPx']} px, clips {', '.join(meta['clips'])}",
+                             fill=(30, 30, 30), font=font(18))
+    y = pad + 30
+    out.alpha_composite(sheet, (pad, y))
+    dark = Image.new("RGBA", sheet.size, DARK)
+    dark.alpha_composite(sheet)
+    out.alpha_composite(dark, (pad, y + sheet.height + pad))
+    out.alpha_composite(big, (pad, y + 2 * (sheet.height + pad)))
+    out.convert("RGB").save(args.out / "final_contact.png")
+
+    frames = sheet_frames(meta, sheet)
+    walk = meta["clips"]["walk"]
+    # One stride covers strideBL body lengths; at the default speed that takes strideBL / speed s.
+    walk_ms = 1000 * walk["strideBL"] / DEFAULT_SPEED_BL / walk["frames"]
+    for clip, fr in frames.items():
+        for zoom in (1, 4):
+            save_animation(fr, args.out / f"{clip}_{zoom}x.webp", walk_ms if clip == "walk" else 1000, zoom)
+    cycle_notes = meta["source"]["notes"]
+    real = cycle_notes.split(" at ")[1].split(" BL/s")[0] if " at " in cycle_notes else "6"
+    src = "data:image/png;base64," + base64.b64encode(args.sheet.with_name("fly-sheet.png").read_bytes()).decode()
+    html = (FINAL_HTML.replace("__META__", json.dumps(meta)).replace("__SRC__", src)
+            .replace("__W__", str(w)).replace("__H__", str(h)).replace("__AX__", str(ax)).replace("__AY__", str(ay))
+            .replace("__N__", str(walk["frames"])).replace("__NI__", str(meta["clips"]["idle"]["frames"]))
+            .replace("__STRIDE__", f"{walk['strideBL']:.2f}").replace("__REAL__", real))
+    (args.out / "final_preview.html").write_text(html)
+    print(f"final_contact.png, final_preview.html and {len(frames) * 2} animations in {args.out}; "
+          f"walk {walk_ms:.0f} ms/frame")
+
+
+def main():
+    args = parse_args()
+    args.out.mkdir(parents=True, exist_ok=True)
+    phase0(args) if args.cmd == "phase0" else final(args)
 
 
 if __name__ == "__main__":

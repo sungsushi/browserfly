@@ -26,11 +26,47 @@ its default CGL backend; no `MUJOCO_GL` setting is needed. On Linux use `MUJOCO_
 ```bash
 pipeline/.venv/bin/python pipeline/render_walk.py pipeline/out/walk_plain
 pipeline/.venv/bin/python pipeline/render_walk.py pipeline/out/walk_thick --leg-thickness 1.8
-pipeline/.venv/bin/python pipeline/contact_sheet.py pipeline/out/walk_plain pipeline/out/walk_thick pipeline/out
+pipeline/.venv/bin/python pipeline/contact_sheet.py phase0 pipeline/out/walk_plain pipeline/out/walk_thick pipeline/out
 ```
 
 Outputs: `pipeline/out/phase0_contact_sheet.png`, `phase0_preview.html` (animated, self-contained)
 and `phase0_stats.json`. Each render takes about 2–3 minutes on an M-series Mac.
+
+## Sprite sheet (M4)
+
+```bash
+pipeline/.venv/bin/python pipeline/build_all.py pipeline/out/build --dist   # ~30 s
+pipeline/.venv/bin/python pipeline/contact_sheet.py final dist/fly-sheet.json pipeline/out/qa
+pipeline/.venv/bin/python -m pytest pipeline/tests                           # ~1.5 min (builds twice)
+```
+
+| Step | Script | What it does |
+|---|---|---|
+| 1 | `render_walk.py --poses-only` | Replays the 2 s recording at 0.1 ms steps; records the thorax pose, tarsus tips and leg joints (thorax frame) at every step, and the model's geometric body length. ~5 s. |
+| 2 | `extract_cycle.py` | Stride period from the tarsus fore-aft signal (autocorrelation for the fundamental, refined by the windowed spectral peak; < 0.6% error in tests). Skips the 0.2 s start-up transient, keeps the steady stretch (local period within 5%), ranks straight cycles by compactness, renders the 4 frames around each candidate's seam and keeps the most compact one whose seam ratio is ≤ 1.1. Plans 16 frames evenly spaced in time (= phase within one cycle). |
+| 3 | `render_walk.py --plan` | Re-runs the replay (deterministic) and renders exactly those steps, plus a 2-frame standing idle clip (neutral pose; the second frame shifts the front tibiae by 0.12 rad). |
+| 4 | `align_frames.py` | Thorax centroid to a fixed point, body axis (PCA of head + thorax + abdomen, signed by the head) vertical. Measures the visible body length. |
+| 5 | `build_sheet.py` | Scales the visible body length to 96 px, area-averages premultiplied colour, packs rows (walk, idle), quantises to 64 colours, writes PNG + lossless WebP + JSON. |
+
+**Design notes**
+
+- **Camera option B** (fixed overhead camera following the thorax, then 2D alignment), not option A
+  (camera rigidly on the thorax): the thorax frame is pitched ~5° and wobbles during walking, and
+  2D alignment is needed for the anchor and axis tests anyway. The camera is **orthographic**, so
+  one pixel is the same distance everywhere (6.6 mm / 1600 px = 4.1 µm).
+- **Labels** come from a second segmentation pass with the wings hidden (moved to geom group 1), so
+  the abdomen under the wings is labelled. The head geom is attached to the thorax body, so labels
+  are assigned by geom name.
+- **Body length** is the *visible* length (2.59 mm), measured on the renders after an opening that
+  drops slivers thinner than ~1 sprite pixel. The mesh vertices span 2.76 mm, but some abdomen-tip
+  vertices are never visible from above, and the head and abdomen tips are slivers.
+- **Seam:** a pose-based seam (foot tips or all leg joints) only weakly predicts how the silhouette
+  loops (a cycle with a pose seam of 1.0 frames had an image seam of 1.7×), hence the image check.
+- **Budget:** the frames are 143×163 for a 96 px body (legs and wings in every frame around a fixed
+  anchor). At 128/96/80/64 colours the WebP is 33/30.5/28.9/26.7 KB; 64 colours is visually
+  indistinguishable from 128 at 4× and leaves headroom.
+- **Turn clip:** not produced (optional in the plan). The recording's turning stretches are
+  irregular, and a turn clip would not fit the budget.
 
 ## FlyGym 2.1.0 findings
 
@@ -66,7 +102,7 @@ tutorials:
   thickened leg sideways. `--leg-thickness` writes thickened copies of the femur, tibia and tarsus
   STLs (radial scale about each segment's principal axis) and loads them via `mesh_basedir`.
 
-## Measured (Phase 0)
+## Measured (Phase 0, perspective camera)
 
 From `phase0_stats.json` (2.0 s clip, steadiest 0.4 s window):
 
@@ -80,6 +116,13 @@ From `phase0_stats.json` (2.0 s clip, steadiest 0.4 s window):
   thorax-centred anchor; a tighter, off-centre anchor in M4 would cut this.
 - Wing material alpha 0.1 per layer (each wing renders as several layers): ~0.34 overall, so the
   wings read as clear glass on light pages and pale grey on dark pages.
+
+## Measured (M4 sheet)
+
+From `dist/fly-sheet.json` and `pipeline/out/build/cycle.json`: stride 92.3 ms (10.8 Hz) starting
+1.14 s into the recording, turning 5.5°; real speed 6.9 BL/s; strideBL 0.64 (visible body length
+2.59 mm); image seam ratio 1.16 (test 2 limit 1.5); 143×163 frames, anchor [72, 67]; PNG 31.1 KB,
+WebP 26.7 KB.
 
 ## Credits
 
