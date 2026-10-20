@@ -1,0 +1,7 @@
+node_modules/
+coverage/
+test-results/
+playwright-report/
+pipeline/.venv/
+pipeline/out/
+.DS_Store
