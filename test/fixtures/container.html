@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Container fixture</title>
+<style>
+  body { margin: 0; padding: 40px; }
+  #box { width: 500px; height: 300px; margin-left: 120px; background: #eef; }
+</style>
+</head>
+<body>
+<p>Text above the container.</p>
+<div id="box"></div>
+<script src="../../dist/fly.js"></script>
+<script>
+  window.swarm = Fly.create({ container: '#box', count: 6, size: 32, seed: 7 });
+</script>
+</body>
+</html>

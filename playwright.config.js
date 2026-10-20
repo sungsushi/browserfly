@@ -19,7 +19,7 @@ export default defineConfig({
   ],
   webServer: {
     command: `node scripts/serve.mjs --port ${PORT}`,
-    url: `http://localhost:${PORT}/`,
+    url: `http://localhost:${PORT}/demo/`,
     reuseExistingServer: !process.env.CI,
   },
 });

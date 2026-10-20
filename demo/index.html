@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fruit-fly demo</title>
+<style>
+  :root { color-scheme: light; --ink: #222; --muted: #666; --panel: rgba(255, 255, 255, 0.94); --line: #ddd; --accent: #8a5a2b; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 16px/1.6 Georgia, 'Times New Roman', serif; color: var(--ink); background: #faf8f3; }
+  main { max-width: 42rem; margin: 0 auto; padding: 3rem 1.25rem 6rem; }
+  h1 { font-weight: normal; font-size: 2.2rem; margin: 0 0 0.5rem; }
+  #target { font: inherit; padding: 0.6rem 1.2rem; border: 1px solid var(--accent); background: #fff; color: var(--accent); border-radius: 6px; cursor: pointer; }
+  #target:hover { background: #fff5ea; }
+  #panel { position: fixed; top: 12px; right: 12px; width: 300px; max-height: calc(100vh - 24px); overflow: auto; z-index: 10;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px;
+    font: 12px/1.4 ui-sans-serif, system-ui, sans-serif; box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08); }
+  #panel header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+  #panel header strong { font-size: 13px; }
+  #fps { font-variant-numeric: tabular-nums; color: var(--muted); }
+  #panel.collapsed .body { display: none; }
+  .row { display: grid; grid-template-columns: 1fr 52px; gap: 2px 6px; align-items: center; margin: 4px 0; }
+  .row label { grid-column: 1 / -1; display: flex; justify-content: space-between; color: var(--muted); }
+  .row label.changed { color: var(--accent); font-weight: 600; }
+  .row input[type=range] { width: 100%; }
+  .row input[type=number], .row select, .row input[type=text] { width: 100%; font: inherit; }
+  .inline { display: flex; gap: 6px; align-items: center; margin: 6px 0; }
+  .inline > * { flex: 1; }
+  button.small { font: inherit; padding: 3px 8px; cursor: pointer; }
+  textarea { width: 100%; height: 90px; font: 11px ui-monospace, Menlo, monospace; resize: vertical; }
+  @media (max-width: 640px) { #panel { width: auto; left: 12px; max-height: 45vh; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Drosophila melanogaster</h1>
+  <p>The common fruit fly is a small insect, about three millimetres long, that has been one of biology's most studied organisms for more than a century. It walks with an alternating tripod gait: the front and hind legs on one side move together with the middle leg on the other.</p>
+  <p>Walking flies alternate runs with pauses and sharp turns. The flies on this page do the same, and they can be drawn toward the cursor or pushed away from it. Move the pointer around, or use the panel to change how they behave.</p>
+  <p><button id="target" type="button">Click me through the flies</button> <span id="clicks">0 clicks</span></p>
+  <p>Larvae hatch from eggs laid on rotting fruit, feed for a few days, pupate, and emerge as adults about ten days after the egg was laid at room temperature. This short generation time is a large part of why the fly became a model organism.</p>
+  <p>Its genome is compact, its genetics are well mapped, and a whole adult brain has now been reconstructed at synaptic resolution. Simulated bodies such as NeuroMechFly combine that anatomy with physics to study how the nervous system produces walking.</p>
+  <p>Keep scrolling: the overlay stays fixed over the viewport, so the flies keep walking over whatever text is underneath without blocking any clicks.</p>
+  <p style="height: 60vh"></p>
+  <p>The end.</p>
+</main>
+
+<aside id="panel">
+  <header>
+    <strong>Fly parameters</strong>
+    <span id="fps">– fps</span>
+    <button class="small" id="collapse" type="button">–</button>
+  </header>
+  <div class="body">
+    <div class="inline">
+      <label>sprite <select id="sprite"><option>auto</option><option>procedural</option></select></label>
+      <label><input type="checkbox" id="debug"> debug</label>
+    </div>
+    <div class="inline">
+      <label>seed <input type="text" id="seed" placeholder="random" size="8"></label>
+      <button class="small" id="reseed" type="button">restart</button>
+      <button class="small" id="reset" type="button">defaults</button>
+    </div>
+    <div id="sliders"></div>
+    <p style="margin: 8px 0 2px; color: var(--muted)">Changed from defaults (copy this to report your tuning):</p>
+    <textarea id="changed" readonly></textarea>
+  </div>
+</aside>
+
+<script src="../dist/fly.js"></script>
+<script>
+  // Demo options come from the query string (e.g. ?seed=1&attraction=1&debug=true), so
+  // the e2e tests and shared links can start from a given configuration.
+  const schema = Fly.schema;
+  const query = new URLSearchParams(location.search);
+  const options = {};
+  for (const [key, raw] of query) {
+    const spec = schema[key];
+    if (!spec) continue;
+    if (spec.type === 'number' || spec.type === 'int') options[key] = Number(raw);
+    else if (spec.type === 'seed') options[key] = raw === '' || raw === 'null' ? null : Number(raw);
+    else if (spec.type === 'bool') options[key] = raw !== 'false';
+    else options[key] = raw;
+  }
+  const swarm = Fly.create(options);
+  window.swarm = swarm;
+
+  let clicks = 0;
+  document.getElementById('target').addEventListener('click', () => {
+    clicks++;
+    document.getElementById('clicks').textContent = `${clicks} click${clicks === 1 ? '' : 's'}`;
+  });
+
+  const SKIP = new Set(['zIndex']);
+  const sliders = document.getElementById('sliders');
+  const controls = {};
+  const current = () => swarm.debug().params;
+
+  function stepFor(spec) {
+    if (spec.type === 'int') return 1;
+    const span = spec.max - spec.min;
+    return span <= 1 ? 0.01 : span <= 10 ? 0.05 : span <= 100 ? 0.1 : 1;
+  }
+
+  for (const [key, spec] of Object.entries(schema)) {
+    if ((spec.type !== 'number' && spec.type !== 'int') || SKIP.has(key)) continue;
+    const row = document.createElement('div');
+    row.className = 'row';
+    row.innerHTML = `<label title="${spec.doc}"><span>${key}</span><span>${spec.min}–${spec.max}</span></label>` +
+      `<input type="range"><input type="number">`;
+    const [range, number] = row.querySelectorAll('input');
+    for (const el of [range, number]) {
+      el.min = spec.min;
+      el.max = spec.max;
+      el.step = stepFor(spec);
+      el.addEventListener('input', () => {
+        const v = Number(el.value);
+        if (Number.isNaN(v)) return;
+        swarm.set({ [key]: v });
+        refresh();
+      });
+    }
+    controls[key] = { range, number, label: row.querySelector('label'), spec };
+    sliders.appendChild(row);
+  }
+
+  const debugBox = document.getElementById('debug');
+  const spriteSel = document.getElementById('sprite');
+  const seedBox = document.getElementById('seed');
+  debugBox.addEventListener('change', () => { swarm.set({ debug: debugBox.checked }); refresh(); });
+  spriteSel.addEventListener('change', () => { swarm.set({ sprite: spriteSel.value }); refresh(); });
+  document.getElementById('reseed').addEventListener('click', () => {
+    const s = seedBox.value.trim();
+    swarm.set({ seed: s === '' ? null : Number(s) });
+    refresh();
+  });
+  document.getElementById('reset').addEventListener('click', () => {
+    const defaults = {};
+    for (const [key, spec] of Object.entries(schema)) if (key !== 'container') defaults[key] = spec.default;
+    swarm.set(defaults);
+    seedBox.value = '';
+    refresh();
+  });
+  document.getElementById('collapse').addEventListener('click', (e) => {
+    const p = document.getElementById('panel');
+    p.classList.toggle('collapsed');
+    e.target.textContent = p.classList.contains('collapsed') ? '+' : '–';
+  });
+
+  function refresh() {
+    const p = current();
+    const changed = {};
+    for (const [key, c] of Object.entries(controls)) {
+      if (document.activeElement !== c.range) c.range.value = p[key];
+      if (document.activeElement !== c.number) c.number.value = p[key];
+      const isChanged = p[key] !== c.spec.default;
+      c.label.classList.toggle('changed', isChanged);
+      if (isChanged) changed[key] = p[key];
+    }
+    for (const key of ['sprite', 'debug', 'reducedMotion', 'stopDistribution']) {
+      if (p[key] !== schema[key].default) changed[key] = p[key];
+    }
+    debugBox.checked = p.debug;
+    spriteSel.value = p.sprite;
+    if (p.seed !== null && document.activeElement !== seedBox) seedBox.value = p.seed;
+    document.getElementById('changed').value = Object.keys(changed).length ? JSON.stringify(changed, null, 2) : '(none)';
+  }
+  refresh();
+
+  setInterval(() => {
+    const { fps } = swarm.debug();
+    document.getElementById('fps').textContent = fps ? `${fps.toFixed(0)} fps` : '– fps';
+  }, 500);
+</script>
+</body>
+</html>
