@@ -8,25 +8,25 @@
 // swarm.debug().
 //
 // Modes:
+//   'live'  every visible fly pushes the text aside; a paragraph is re-laid out only when a fly
+//           near it has moved at least SETTLE_PX ("live reflow, settled")
 //   'off'   the browser lays out the text (CSS justification and hyphenation)
-//   'live'  (option B) every visible fly pushes the text aside; a paragraph is re-laid out only
-//           when a fly near it has moved at least SETTLE_PX
-//   'rest'  (option C) the text parts only around flies that have stopped, opening and closing
-//           smoothly; walking flies cross the text
 (function () {
-  const SETTLE_PX = 4; // option B: re-lay out a paragraph only after this much fly movement
-  const OPEN_TAU = 0.15; // option C: time constant of the opening/closing (s)
+  const SETTLE_PX = 4; // re-lay out a paragraph only after this much fly movement
   const MIN_GAP_EM = 2.2; // gaps narrower than this hold no text
   const CLEARANCE = 0.8; // clear-zone radius in body lengths, plus PAD_PX
   const PAD_PX = 4;
   const MAX_STRETCH_EM = 0.33; // most extra word spacing a justified piece may get, per gap
   const SHRINK_DELAY_MS = 1500; // a grown paragraph shrinks back only after this long without growing
 
-  function createTextWrap({ root, getSwarm, mode = 'rest' }) {
+  function createTextWrap({ root, getSwarm, mode = 'live' }) {
     const ctx = document.createElement('canvas').getContext('2d');
     const paras = [...root.querySelectorAll('p:not(.elision)')].map((el) => ({
       el,
       html: el.innerHTML,
+      // The text as written, captured before any wrapping: once lines are spans, textContent
+      // runs words at line ends together, and a late font load re-measures (see measure()).
+      text: el.textContent.replace(/\s+/g, ' ').trim(),
       attrs: { class: el.getAttribute('class'), style: el.getAttribute('style') },
       indent: parseFloat(getComputedStyle(el).textIndent) || 0,
       dropcap: el.classList.contains('dropcap'),
@@ -34,8 +34,6 @@
     }));
     let metrics = null;
     let rafId = 0;
-    let last = null;
-    const open = []; // option C: per-fly opening amount in [0, 1]
     const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 
     // --- measuring ------------------------------------------------------------------------------
@@ -56,7 +54,7 @@
         minGap: MIN_GAP_EM * size,
       };
       for (const p of paras) {
-        const text = p.el.textContent.replace(/\s+/g, ' ').trim();
+        const text = p.text;
         p.cap = p.dropcap ? text[0] : '';
         p.words = (p.dropcap ? text.slice(1) : text).split(' ');
         p.widths = p.words.map((w) => ctx.measureText(w).width);
@@ -191,8 +189,6 @@
     function frame(now) {
       if (mode === 'off') return; // a frame queued before switching off must not lay anything out
       rafId = requestAnimationFrame(frame);
-      const dt = last === null ? 0 : Math.min(0.1, (now - last) / 1000);
-      last = now;
       const swarm = getSwarm();
       if (!swarm || !metrics) return;
       // Don't move text under an active selection.
@@ -201,18 +197,8 @@
 
       const d = swarm.debug();
       const toPage = d.anchor === 'page' ? 0 : window.scrollY;
-      const R = CLEARANCE * d.params.size + PAD_PX;
-      const flies = d.flies.map((f, i) => {
-        let r = R;
-        if (mode === 'rest') {
-          const target = f.mode === 'stop' ? 1 : 0;
-          const o = open[i] ?? 0;
-          open[i] = o + (target - o) * (1 - Math.exp(-dt / OPEN_TAU));
-          r = R * open[i];
-        }
-        return { x: f.x, y: f.y + toPage, r };
-      });
-      open.length = flies.length;
+      const r = CLEARANCE * d.params.size + PAD_PX;
+      const flies = d.flies.map((f) => ({ x: f.x, y: f.y + toPage, r }));
 
       // Read every paragraph's position first, then write, so layout is computed once per frame.
       const rects = paras.map((p) => {
@@ -221,9 +207,9 @@
       });
       paras.forEach((p, i) => {
         const b = rects[i];
-        const q = mode === 'live' ? SETTLE_PX : 1;
+        const q = SETTLE_PX;
         const near = flies
-          .filter((f) => f.r > 0.5 && f.y + f.r > b.y && f.y - f.r < b.y + b.h + metrics.lh && f.x + f.r > b.x && f.x - f.r < b.x + b.w)
+          .filter((f) => f.y + f.r > b.y && f.y - f.r < b.y + b.h + metrics.lh && f.x + f.r > b.x && f.x - f.r < b.x + b.w)
           .map((f) => ({ x: f.x - b.x, y: f.y - b.y, r: f.r }));
         const sig = `${b.w}|` + near.map((o) => `${Math.round(o.x / q)},${Math.round(o.y / q)},${Math.round(o.r)}`).join(';');
         if (sig !== p.sig || (p.h > (p.lines || 0) * metrics.lh && now - p.grewAt > SHRINK_DELAY_MS)) {
@@ -241,7 +227,6 @@
         return;
       }
       if (!rafId) {
-        last = null;
         rafId = requestAnimationFrame(frame);
       }
     }
@@ -255,6 +240,7 @@
       measure();
       start();
     });
+    // A later font load (e.g. Lora 600 for the drop cap) changes widths: measure again.
     document.fonts.addEventListener('loadingdone', () => { if (metrics) measure(); });
 
     return {
@@ -262,14 +248,13 @@
       get mode() { return mode; },
       setMode(m) {
         mode = m;
-        open.length = 0;
         paras.forEach((p) => { p.sig = null; });
         if (mode === 'off') restore();
         start();
       },
       /**
        * For tests: the clear-zone radius for flies of `size` px, and how far (px) a zone may lag
-       * its fly in 'live' mode, where positions are bucketed to a SETTLE_PX grid.
+       * its fly, since positions are bucketed to a SETTLE_PX grid.
        */
       clearance(size) {
         return { r: CLEARANCE * size + PAD_PX, lag: mode === 'live' ? SETTLE_PX : 0 };

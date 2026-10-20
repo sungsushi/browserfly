@@ -85,7 +85,7 @@
       <label><input type="checkbox" id="debug"> debug</label>
     </div>
     <div class="inline">
-      <label>text wrap <select id="wrap"><option value="off">off</option><option value="live">B: live (settled)</option><option value="rest">C: around resting flies</option></select></label>
+      <label>text wrap <select id="wrap"><option value="live">on (text moves around the flies)</option><option value="off">off</option></select></label>
     </div>
     <div class="inline">
       <label>anchor <select id="anchor"><option value="viewport">viewport (stay on screen)</option><option value="page">page (scroll with content)</option></select></label>
@@ -120,9 +120,9 @@
   const swarm = Fly.create(options);
   window.swarm = swarm;
 
-  // Text wrapping around the flies (demo-only prototype): ?wrap=off|live|rest, default rest.
+  // Text wrapping around the flies (demo only): ?wrap=live|off, default live.
   const wrapSel = document.getElementById('wrap');
-  const wrapMode = ['off', 'live', 'rest'].includes(query.get('wrap')) ? query.get('wrap') : 'rest';
+  const wrapMode = query.get('wrap') === 'off' ? 'off' : 'live';
   window.textWrap = createTextWrap({ root: document.querySelector('blockquote'), getSwarm: () => swarm, mode: wrapMode });
   wrapSel.value = wrapMode;
   wrapSel.addEventListener('change', () => window.textWrap.setMode(wrapSel.value));
