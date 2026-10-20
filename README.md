@@ -183,7 +183,10 @@ npm run serve                 # http://localhost:8080/demo/ — demo with a live
 The demo page (`demo/index.html`) has sliders for every option, renderer and anchor toggles, a seed
 box, a debug overlay and a box listing the options you've changed from the defaults. The debug
 overlay's per-fly text labels are only drawn by the debug build (`fly.js`); the minified builds draw
-the overlay without them.
+the overlay without them. The demo also prototypes text that wraps around the flies
+(`demo/textwrap.js`, demo-only, not part of the library): `?wrap=live` re-wraps around every fly as
+it moves, `?wrap=rest` (default) opens the text only around flies that have stopped, `?wrap=off`
+leaves layout to the browser.
 [PLAN.md](PLAN.md) is the full specification and [PROGRESS.md](PROGRESS.md) the project log.
 
 ## Regenerating the sprite sheet

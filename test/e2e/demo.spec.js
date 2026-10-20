@@ -71,7 +71,8 @@ test('4. attraction end-to-end: the fly reaches the arrival radius within 20 s',
 test('8. destroy removes the canvas, stops the loop and is idempotent', async ({ page }) => {
   await countRaf(page);
   const errors = trackErrors(page);
-  await openDemo(page);
+  // Text wrapping off: its own frame loop would count too; this test is about the library's loop.
+  await openDemo(page, { wrap: 'off' });
   await page.waitForTimeout(300);
   const before = await page.evaluate(() => window.__rafCount);
   expect(before).toBeGreaterThan(0);

@@ -29,6 +29,11 @@
     .dropcap::first-letter { float: none; font-size: inherit; line-height: inherit; margin: 0 0.1em 0 0;
       -webkit-initial-letter: 3; initial-letter: 3; }
   }
+  /* Text laid out by textwrap.js: each line piece is positioned absolutely inside its paragraph. */
+  .tw { position: relative; text-indent: 0 !important; }
+  .tw::first-letter { float: none; font-size: inherit; initial-letter: normal; -webkit-initial-letter: normal; color: inherit; font-weight: inherit; }
+  .tw-line { position: absolute; white-space: pre; }
+  .tw-cap { position: absolute; left: 0; font-weight: 600; color: var(--accent); }
   .elision { text-align: center; text-indent: 0; letter-spacing: 0.6em; color: var(--muted); margin: 1.4rem 0 1.4rem 0.6em; }
   .elision + p { text-indent: 0; }
   figcaption { margin-top: 2.25rem; text-align: right; font-size: 0.95rem; color: var(--muted); }
@@ -80,6 +85,9 @@
       <label><input type="checkbox" id="debug"> debug</label>
     </div>
     <div class="inline">
+      <label>text wrap <select id="wrap"><option value="off">off</option><option value="live">B: live (settled)</option><option value="rest">C: around resting flies</option></select></label>
+    </div>
+    <div class="inline">
       <label>anchor <select id="anchor"><option value="viewport">viewport (stay on screen)</option><option value="page">page (scroll with content)</option></select></label>
     </div>
     <div class="inline">
@@ -94,6 +102,7 @@
 </aside>
 
 <script src="../dist/fly.js"></script>
+<script src="textwrap.js"></script>
 <script>
   // Demo options come from the query string (e.g. ?seed=1&attraction=1&debug=true), so
   // the e2e tests and shared links can start from a given configuration.
@@ -110,6 +119,13 @@
   }
   const swarm = Fly.create(options);
   window.swarm = swarm;
+
+  // Text wrapping around the flies (demo-only prototype): ?wrap=off|live|rest, default rest.
+  const wrapSel = document.getElementById('wrap');
+  const wrapMode = ['off', 'live', 'rest'].includes(query.get('wrap')) ? query.get('wrap') : 'rest';
+  window.textWrap = createTextWrap({ root: document.querySelector('blockquote'), getSwarm: () => swarm, mode: wrapMode });
+  wrapSel.value = wrapMode;
+  wrapSel.addEventListener('change', () => window.textWrap.setMode(wrapSel.value));
 
 
   const SKIP = new Set(['zIndex']);
