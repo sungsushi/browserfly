@@ -10,6 +10,7 @@ With --dist the three sheet files are copied to dist/. The pipeline is determini
 twice gives byte-identical JSON and pixel-identical sheets (pipeline test 7).
 
 Usage: python pipeline/build_all.py OUT [--dist] [--frames 16] [--body-length 96] [--colors 64]
+                                          [--wing-rgba R G B A]
 """
 import argparse
 import json
@@ -27,12 +28,13 @@ def run(*args):
     subprocess.run([sys.executable, *map(str, args)], check=True, stdout=subprocess.DEVNULL)
 
 
-def build_all(out, frames=16, body_length=96, colors=64):
+def build_all(out, frames=16, body_length=96, colors=64, wing_rgba=None):
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
+    wing = ["--wing-rgba", *wing_rgba] if wing_rgba else []
     run(HERE / "render_walk.py", out / "sim", "--poses-only")
     run(HERE / "extract_cycle.py", out / "sim", out / "cycle.json", "--frames", frames)
-    run(HERE / "render_walk.py", out / "frames", "--plan", out / "cycle.json")
+    run(HERE / "render_walk.py", out / "frames", "--plan", out / "cycle.json", *wing)
     run(HERE / "align_frames.py", out / "frames", out / "aligned")
     run(HERE / "build_sheet.py", out / "aligned", out / "cycle.json", out / "sheet",
         "--body-length", body_length, "--colors", colors)
@@ -46,8 +48,10 @@ def main():
     ap.add_argument("--frames", type=int, default=16)
     ap.add_argument("--body-length", type=int, default=96)
     ap.add_argument("--colors", type=int, default=64)
+    ap.add_argument("--wing-rgba", type=float, nargs=4, metavar=("R", "G", "B", "A"),
+                    help="wing material colour, 0–1 (default: render_walk.WING_RGBA)")
     args = ap.parse_args()
-    sheet = build_all(args.out, args.frames, args.body_length, args.colors)
+    sheet = build_all(args.out, args.frames, args.body_length, args.colors, args.wing_rgba)
     if args.dist:
         for name in SHEET_FILES:
             shutil.copyfile(sheet / name, DIST / name)

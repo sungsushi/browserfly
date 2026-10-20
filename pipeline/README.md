@@ -114,15 +114,17 @@ From `phase0_stats.json` (2.0 s clip, steadiest 0.4 s window):
   48 px ≈ 11 KB, 96 px ≈ 33 KB, 128 px ≈ 55 KB (plain); thickened legs and outline add ~10%.
   The frames are 2.2 × BL wide because they hold the legs and the wings in every frame around a
   thorax-centred anchor; a tighter, off-centre anchor in M4 would cut this.
-- Wing material alpha 0.1 per layer (each wing renders as several layers): ~0.34 overall, so the
-  wings read as clear glass on light pages and pale grey on dark pages.
+- Wings: grey-blue, RGB 0.60 0.66 0.78 with alpha 0.12 per layer (each wing renders as several
+  layers, so ~0.4 overall). Chosen by the user from six rendered variants because the earlier
+  near-white wings (0.86 0.86 0.88, alpha 0.1) vanished on white pages. Override with
+  `--wing-rgba R G B A` on `render_walk.py` / `build_all.py`.
 
 ## Measured (M4 sheet)
 
 From `dist/fly-sheet.json` and `pipeline/out/build/cycle.json`: stride 92.3 ms (10.8 Hz) starting
 1.14 s into the recording, turning 5.5°; real speed 6.9 BL/s; strideBL 0.64 (visible body length
-2.59 mm); image seam ratio 1.16 (test 2 limit 1.5); 143×163 frames, anchor [72, 67]; PNG 31.1 KB,
-WebP 26.7 KB.
+2.59 mm); image seam ratio 1.16 (test 2 limit 1.5); 143×163 frames, anchor [72, 67]; PNG 32.1 KB,
+WebP 27.6 KB (grey-blue wings).
 
 ## Credits
 

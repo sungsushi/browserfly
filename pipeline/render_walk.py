@@ -49,6 +49,10 @@ WARMUP_S = 0.05
 IDLE_SETTLE_S = 0.3
 IDLE_STEP_S = 0.15
 IDLE_TIBIA_DELTA = 0.12  # rad: front tibiae shift slightly between the two idle frames
+# Wing material RGBA: grey-blue, so the wings show on white pages (variant C of the wing-colour
+# prototypes; was 0.86 0.86 0.88 / 0.1). Each wing renders as several overlapping layers, so
+# per-layer alpha compounds (0.12 → ~0.4 overall).
+WING_RGBA = (0.60, 0.66, 0.78, 0.12)
 
 # Part labels in label maps (by geom name; the head geom hangs off the thorax body). Labels come
 # from a segmentation pass with the wings hidden, so the abdomen under the wings is labelled; "wing"
@@ -70,6 +74,8 @@ def parse_args():
                     help="physics steps (0.1 ms) between frames; default 30 (images) or 1 (poses)")
     ap.add_argument("--leg-thickness", type=float, default=1.0, help="radial scale of the thin leg segments")
     ap.add_argument("--mesh", choices=["simplified", "fullsize"], default="simplified")
+    ap.add_argument("--wing-rgba", type=float, nargs=4, default=WING_RGBA, metavar=("R", "G", "B", "A"),
+                    help="wing material colour, 0–1 (alpha is per layer)")
     args = ap.parse_args()
     if args.every is None:
         args.every = 1 if args.poses_only else 30
@@ -126,11 +132,10 @@ def mesh_dir(mesh_type, leg_thickness):
 
 # --- model ----------------------------------------------------------------------------------------
 
-def visuals_config(out_dir):
-    """FlyGym's default visuals with clearer, greyer wings (the default is lavender)."""
+def visuals_config(out_dir, wing_rgba=WING_RGBA):
+    """FlyGym's default visuals with our wing colour (FlyGym's default is lavender)."""
     cfg = yaml.safe_load((Path(flygym.assets_dir) / "model/neuromechfly/visuals.yaml").read_text())
-    # Each wing renders as several overlapping layers, so per-layer alpha compounds (0.1 → ~0.34).
-    cfg["wing"]["material"]["rgba"] = [0.86, 0.86, 0.88, 0.1]
+    cfg["wing"]["material"]["rgba"] = [float(v) for v in wing_rgba]
     path = out_dir / "visuals.yaml"
     path.write_text(yaml.safe_dump(cfg))
     return path
@@ -150,7 +155,7 @@ def build(args):
                    neutral_pose=neutral)
     fly.add_actuators(fly.skeleton.get_actuated_dofs_from_preset(ActuatedDOFPreset.LEGS_ACTIVE_ONLY),
                       actuator_type=act, kp=150.0, neutral_input=neutral)
-    fly.colorize(visuals_config(args.out))
+    fly.colorize(visuals_config(args.out, getattr(args, "wing_rgba", WING_RGBA)))
     fly.add_leg_adhesion()
     # For an orthographic camera, fovy is the view height in model units (mm).
     fly.add_tracking_camera(name="topcam", mode="track", pos_offset=(0, 0, CAMERA_HEIGHT),
@@ -398,7 +403,8 @@ def main():
         "dataFps": run.snippet.data_fps, "simDt": SIM_DT, "warmupS": WARMUP_S, "every": args.every,
         "res": args.res, "viewMm": args.view_mm, "mmPerPx": args.view_mm / args.res,
         "camera": "orthographic, tracks thorax position, world orientation (world +x up)",
-        "mesh": args.mesh, "legThickness": args.leg_thickness, "labels": LABELS, **result,
+        "mesh": args.mesh, "legThickness": args.leg_thickness, "wingRgba": list(args.wing_rgba),
+        "labels": LABELS, **result,
     }
     (args.out / "render.json").write_text(json.dumps(meta, indent=1))
     print(json.dumps(meta))

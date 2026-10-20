@@ -5,7 +5,7 @@ drawn toward the cursor or pushed away from it. The fly is a sprite rendered fro
 [NeuroMechFly](https://neuromechfly.org/), a biomechanical model of *Drosophila melanogaster*,
 replaying a recorded real walking stride, so the legs move in a true tripod gait without sliding.
 
-One script tag, no dependencies, about 8 KB gzipped (plus a 27 KB sprite sheet, or one 36 KB file
+One script tag, no dependencies, about 8 KB gzipped (plus a 28 KB sprite sheet, or one 37 KB file
 with the sheet inlined). The overlay never blocks clicks, never scrolls or shifts the layout, and
 respects `prefers-reduced-motion`.
 
@@ -57,9 +57,9 @@ module has no `currentScript`, so pass `sprite` as a URL (e.g.
 | File | Size (gzip) | Use |
 |---|---|---|
 | `fly.min.js` | 7.97 KB | the library, minified; loads the sprite sheet next to it |
-| `fly-sheet.webp` | 26.7 KB (not gzipped) | the sprite sheet |
-| `fly-sheet.png` | 31.1 KB (not gzipped) | fallback if WebP can't be decoded |
-| `fly.inline.min.js` | 36.3 KB | the library with the sheet inlined: the only file you need |
+| `fly-sheet.webp` | 27.6 KB (not gzipped) | the sprite sheet |
+| `fly-sheet.png` | 32.1 KB (not gzipped) | fallback if WebP can't be decoded |
+| `fly.inline.min.js` | 37.2 KB | the library with the sheet inlined: the only file you need |
 | `fly.js` | 11.6 KB | readable debug build (extra checks; used by the demo) |
 | `fly.esm.js` | 10.5 KB | ES module build |
 | `fly-sheet.json` | 0.6 KB | sheet metadata (already embedded in every bundle) |
@@ -186,7 +186,8 @@ npm run build                 # re-embed the new sheet in the bundles
 The pipeline replays a recorded walking stride in NeuroMechFly (FlyGym 2.1.0, MuJoCo 3.9.0),
 renders it from directly overhead with an orthographic camera, picks one seamlessly looping stride,
 aligns the frames head-up around the thorax, and packs a 16-frame walk and a 2-frame idle clip
-into a 64-colour sheet. The build is deterministic.
+into a 64-colour sheet. The wings are a translucent grey-blue so they show on white pages
+(`--wing-rgba` changes it). The build is deterministic.
 
 ## Credits and licences
 
