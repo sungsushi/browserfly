@@ -1,6 +1,6 @@
 # Progress
 
-**Current milestone:** M2 — Overlay, input, procedural renderer, demo — ✅ tests pass (committed). 🚦 **Gate:** waiting for the user to tune default parameters in the demo.
+**Current milestone:** M2 — Overlay, input, procedural renderer, demo ✅ done (committed; gate closed 2026-10-20, user kept the defaults). Next: M3 — 🚦 FlyGym feasibility and leg-readability test (not started; waiting for go-ahead).
 
 ## Done
 - **M0** — scaffolding (git, package.json scripts, esbuild/vitest/playwright/eslint configs, serve + sweep scripts).
@@ -21,7 +21,6 @@
 
 ## Open issues
 - Firefox exceeds the 2 ms soft perf budget with 20 flies (headless Firefox canvas is slower; Chromium/WebKit are ~8× under). Candidate optimisations if it matters: cache the static body as an offscreen bitmap per size and only draw legs per frame.
-- Default parameters await the user's tuning at the M2 gate; the tuned defaults will be a follow-up commit.
 - **Test 20 at 120 s is not flake-free — accepted by the user (2026-10-20); a lone test 20 failure is a known flake, rerun.** Over 2000 flies the escape time is median 10 s, p99 69 s, max 114 s, with a roughly exponential tail (×~8 less likely per extra 30 s). Estimated failure rate: ~1.5% per run, ~1 in 4 sweeps (seen on base 16). 180 s would be ~0.02% per run.
 - Test 20 does not assert "no stops inside the radius": ordinary run-ending stops (≈2 per fly) happen there under the specified behaviour. It asserts no arrival stop / no lingering (disarmed, `lingerTimer` never increases) until re-armed.
 - vitest `testTimeout` is 120 s (statistical tests exceed the default under coverage).
