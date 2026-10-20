@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "Drop-in wandering fruit-fly sprite for static websites",
+  "license": "Apache-2.0",
   "type": "module",
   "scripts": {
     "build": "node esbuild.config.mjs",

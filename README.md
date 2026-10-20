@@ -236,4 +236,8 @@ and, for the walking data, Wang-Chen et al. (2026), bioRxiv
 inverse kinematics, Özdil et al. (2026), *JOSS*,
 [10.21105/joss.08557](https://doi.org/10.21105/joss.08557).
 
-This repository's own code has no licence file yet.
+## Licence
+
+browserfly is licensed under the [Apache License 2.0](LICENSE), the same licence as FlyGym and
+NeuroMechFly. See [NOTICE](NOTICE) for the attribution that must travel with copies of the sprite
+sheet and the bundles that embed it.

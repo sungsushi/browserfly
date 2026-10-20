@@ -66,9 +66,10 @@
 
 - **GitHub Pages prep (2026-10-20):** remote `origin` = github.com/sungsushi/browserfly (private; `master` pushed by the user). Added a root `index.html` that forwards to `demo/` keeping `?options`, and `.nojekyll`. New `test/e2e/pages.spec.js` checks the forward and the demo under the `/my-repo/` subpath (sprite from `/my-repo/dist/`, text wrap on, no errors/404s). Pages not enabled yet: user to enable (Settings → Pages → master, / root) and make the repo public.
 
+- **Licence (2026-10-20, user's choice):** Apache-2.0 (as FlyGym/NeuroMechFly). `LICENSE` (canonical text from apache.org), `NOTICE` (copyright line "sungsushi" + FlyGym/NeuroMechFly attribution for the sprite sheet), `package.json` `"license": "Apache-2.0"`, README licence section.
+
 ## Open issues
 - **CI not verified on GitHub:** no git remote is configured, so the workflow has only been validated (YAML) and its steps run locally.
-- **No licence for this repository's own code** (README says so). FlyGym/NeuroMechFly are Apache-2.0 and credited.
 - Sheet budget: met at 64 colours with ~3 KB WebP headroom. Re-rendering at other settings may need 48 colours (18 KB) or fewer frames.
 - Real speed in the chosen stride is 6.9 BL/s with strideBL 0.64; at the rev 4 default of 1.2 BL/s the legs step at ~1.9 Hz (≈ 32 display frames per stride).
 - **`fly.min.js` has ~27 B of headroom under 8 KB gz.** The easy trims are used up (debug labels and validation messages are debug-only). Further runtime features (e.g. click-to-fly-away) will need the budget raised or a feature trade — ask the user.
