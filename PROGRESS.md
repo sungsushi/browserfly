@@ -64,6 +64,8 @@
 
 - **Text wrap: option B kept (2026-10-20, user's choice):** option C ('rest') removed from `demo/textwrap.js`, the panel (now on/off) and the tests; 'live' is the demo default (`?wrap=off` to disable). Fixed a bug the e2e test caught in Firefox: a late font load (Lora 600) re-measured words from the already-wrapped spans, merging words at line ends ("makesome"); paragraphs' text is now captured once before wrapping. Text-wrap tests ×8: 72/72; full e2e 120/120.
 
+- **GitHub Pages prep (2026-10-20):** remote `origin` = github.com/sungsushi/browserfly (private; `master` pushed by the user). Added a root `index.html` that forwards to `demo/` keeping `?options`, and `.nojekyll`. New `test/e2e/pages.spec.js` checks the forward and the demo under the `/my-repo/` subpath (sprite from `/my-repo/dist/`, text wrap on, no errors/404s). Pages not enabled yet: user to enable (Settings → Pages → master, / root) and make the repo public.
+
 ## Open issues
 - **CI not verified on GitHub:** no git remote is configured, so the workflow has only been validated (YAML) and its steps run locally.
 - **No licence for this repository's own code** (README says so). FlyGym/NeuroMechFly are Apache-2.0 and credited.
