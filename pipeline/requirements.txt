@@ -1,0 +1,8 @@
+# Asset pipeline (offline). Python 3.12; install into pipeline/.venv:
+#   uv venv -p python3.12 pipeline/.venv && uv pip install -p pipeline/.venv/bin/python -r pipeline/requirements.txt
+flygym==2.1.0
+mujoco==3.9.0
+numpy==2.5.4
+pillow==12.3.0
+scipy==1.18.1
+pytest==9.1.1
