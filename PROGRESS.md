@@ -1,6 +1,6 @@
 # Progress
 
-**Current milestone:** M4 — Sprite pipeline — ✅ tests pass (committed). 🚦 **Gate:** waiting for the user's visual approval of the sheet (`pipeline/out/qa/`).
+**Current milestone:** M5 — Sprite renderer integration — ✅ done (committed). Next: M6 — Packaging, docs, GitHub Pages check (not started; waiting for go-ahead).
 
 ## Done
 - **M0** — scaffolding (git, package.json scripts, esbuild/vitest/playwright/eslint configs, serve + sweep scripts).
@@ -31,10 +31,20 @@
   - Decisions: camera option B, orthographic; body length = visible length (2.59 mm) rather than mesh-vertex span (2.76 mm); cycle chosen by an image-based seam check; 64 colours to meet the WebP budget; no turn clip.
   - Test 5's body-length check compares every frame (stricter than the plan's single comparison); it passes.
 
+  - **M4 gate (2026-10-20):** user approved the sheet.
+- **M5** — rev 4 runtime changes and sprite integration.
+  - Rev 4: defaults `size` 96, `speed` 1.2, new `headingTau` 0.3; OU heading noise (`omega` state, exact update, stationary draw on entering run and at spawn); procedural head now overlaps the thorax. Unit tests: test 11/23 use 2·D·(t − τ(1 − e^(−t/τ))) for a stationary start (same ±8%); `P()` pins speed 2.5 (rev 3 criteria unchanged); new smoothness test. `npm test`: 87/87. `npm run test:sweep`: **20/20** seed bases (test 20 did not flake this time).
+  - `src/sheet.js` (validation, URL resolution: inline → script-relative WebP → PNG; custom image or `.json` sheet URL; decode to ImageBitmap), `src/render-sprite.js`; `index.js` draws procedurally until the sheet loads, warns once on failure; `debug()` reports `renderer` and `sheetUrl`. Metadata embedded as `__SHEET_META__` (runtime fields only); `fly.inline.min.js` built.
+  - Parameter descriptions moved to `src/param-docs.js` (debug build's `Fly.schema` only) to fit the min budget.
+  - E2E: new `test/e2e/sprite.spec.js` (tests 1–6) + second test server under `/my-repo/`. `npm run test:e2e` ×2: **144/144** (24 tests × 3 browsers × 2). One earlier Firefox run of test 6 failed in 6 ms (launch-level, not reproduced in 24 + 144 further runs).
+  - Bundles: `fly.min.js` 7.94 KB gz (budget 8, ~60 B headroom), `fly.inline.min.js` 36.2 KB gz (budget 45). The build now prints budgets.
+  - Demo: renderer toggle (sprite / procedural).
+
 ## Open issues
 - Sheet budget: met at 64 colours with ~3 KB WebP headroom. Re-rendering at other settings may need 48 colours (18 KB) or fewer frames.
-- `dist/fly-sheet.webp` now exists, so `npm run build` will also produce `fly.inline.min.js` (budget 45 KB gz, checked in M5/M6).
 - Real speed in the chosen stride is 6.9 BL/s with strideBL 0.64; at the rev 4 default of 1.2 BL/s the legs step at ~1.9 Hz (≈ 32 display frames per stride).
+- **`fly.min.js` has ~60 B of headroom under 8 KB gz.** Any M6 runtime addition (e.g. `aria-hidden`) must be paid for; candidates: shorter warning texts, dropping the debug overlay's labels in min builds.
+- E2E filters Chromium's "Failed to load resource" console errors in the 404 test: they come from the network layer, not script.
 - Firefox exceeds the 2 ms soft perf budget with 20 flies (headless Firefox canvas is slower; Chromium/WebKit are ~8× under). Candidate optimisations if it matters: cache the static body as an offscreen bitmap per size and only draw legs per frame.
 - **Test 20 at 120 s is not flake-free — accepted by the user (2026-10-20); a lone test 20 failure is a known flake, rerun.** Over 2000 flies the escape time is median 10 s, p99 69 s, max 114 s, with a roughly exponential tail (×~8 less likely per extra 30 s). Estimated failure rate: ~1.5% per run, ~1 in 4 sweeps (seen on base 16). 180 s would be ~0.02% per run.
 - Test 20 does not assert "no stops inside the radius": ordinary run-ending stops (≈2 per fly) happen there under the specified behaviour. It asserts no arrival stop / no lingering (disarmed, `lingerTimer` never increases) until re-armed.

@@ -1,37 +1,38 @@
-// Parameter schema: defaults, ranges and docs in one table that drives validation,
-// data-attribute parsing and the README parameter table.
+// Parameter schema: defaults and ranges in one table that drives validation and data-attribute
+// parsing. Descriptions live in param-docs.js (kept out of the minified bundles).
 
-const num = (def, min, max, doc) => ({ type: 'number', default: def, min, max, doc });
-const int = (def, min, max, doc) => ({ type: 'int', default: def, min, max, doc });
-const oneOf = (def, values, doc) => ({ type: 'enum', default: def, values, doc });
+const num = (def, min, max) => ({ type: 'number', default: def, min, max });
+const int = (def, min, max) => ({ type: 'int', default: def, min, max });
+const oneOf = (def, values) => ({ type: 'enum', default: def, values });
 
 export const SCHEMA = {
-  count: int(1, 1, 50, 'number of flies'),
-  size: num(48, 8, 200, 'rendered body length (px)'),
-  speed: num(2.5, 0.1, 20, 'mean run speed (BL/s)'),
-  speedJitter: num(0.15, 0, 0.5, 'SD of the per-run speed multiplier'),
-  runMean: num(2.5, 0.1, 60, 'mean run duration with no cursor influence (s)'),
-  stopProbability: num(0.7, 0, 1, 'chance that a run ends in a stop rather than an immediate reorientation'),
-  stopMean: num(1.2, 0.05, 30, 'mean stop duration (s)'),
-  stopDistribution: oneOf('lognormal', ['exp', 'lognormal'], 'stop duration distribution'),
-  rotDiffusion: num(0.4, 0, 10, 'heading diffusion during runs (rad²/s)'),
-  turnRate: num(5, 0.5, 30, 'max angular speed while reorienting (rad/s)'),
-  attraction: num(0.3, -1, 1, 'cursor attraction; negative means repulsion'),
-  attractionRange: num(400, 10, 5000, 'cursor falloff length scale (px)'),
-  steeringGain: num(3, 0, 20, 'strength of continuous steering during runs (rad/s)'),
-  kappaMax: num(6, 0, 50, 'von Mises concentration of reorientation at full attraction'),
-  klinokinesis: num(0.5, 0, 0.9, 'modulation of the run-ending hazard by heading'),
-  arrivalRadius: num(1.5, 0, 10, 'attracted flies stop within this distance of the cursor (BL; 0 disables)'),
-  lingerMax: num(6, 0, 60, 'max time to linger at the cursor (s)'),
-  wallMargin: num(1.5, 0, 5, 'soft wall-avoidance zone (BL)'),
-  wallGain: num(6, 0, 30, 'wall steering strength (rad/s)'),
-  container: { type: 'container', default: null, doc: 'Element or CSS selector; null means full-viewport overlay' },
-  zIndex: int(2147483000, -2147483648, 2147483647, 'overlay z-index'),
-  seed: { type: 'seed', default: null, min: 0, max: 4294967295, doc: 'uint32 seed; null means random' },
-  reducedMotion: oneOf('static', ['static', 'hide', 'ignore'], 'behaviour when prefers-reduced-motion: reduce'),
-  sprite: { type: 'sprite', default: 'auto', doc: "'auto', 'procedural' or a sprite sheet URL" },
-  touchTargetTimeout: num(4, 0, 30, 'how long a tap acts as the cursor on touch devices (s)'),
-  debug: { type: 'bool', default: false, doc: 'draw the debug overlay' },
+  count: int(1, 1, 50),
+  size: num(96, 8, 200),
+  speed: num(1.2, 0.1, 20),
+  speedJitter: num(0.15, 0, 0.5),
+  runMean: num(2.5, 0.1, 60),
+  stopProbability: num(0.7, 0, 1),
+  stopMean: num(1.2, 0.05, 30),
+  stopDistribution: oneOf('lognormal', ['exp', 'lognormal']),
+  rotDiffusion: num(0.4, 0, 10),
+  headingTau: num(0.3, 0.02, 2),
+  turnRate: num(5, 0.5, 30),
+  attraction: num(0.3, -1, 1),
+  attractionRange: num(400, 10, 5000),
+  steeringGain: num(3, 0, 20),
+  kappaMax: num(6, 0, 50),
+  klinokinesis: num(0.5, 0, 0.9),
+  arrivalRadius: num(1.5, 0, 10),
+  lingerMax: num(6, 0, 60),
+  wallMargin: num(1.5, 0, 5),
+  wallGain: num(6, 0, 30),
+  container: { type: 'container', default: null },
+  zIndex: int(2147483000, -2147483648, 2147483647),
+  seed: { type: 'seed', default: null, min: 0, max: 4294967295 },
+  reducedMotion: oneOf('static', ['static', 'hide', 'ignore']),
+  sprite: { type: 'sprite', default: 'auto' },
+  touchTargetTimeout: num(4, 0, 30),
+  debug: { type: 'bool', default: false },
 };
 
 export const DEFAULTS = Object.freeze(
@@ -39,7 +40,8 @@ export const DEFAULTS = Object.freeze(
 
 const warned = new Set();
 
-function warnOnce(key, message) {
+/** console.warn once per key for the page (shared by params and the sprite loader). */
+export function warnOnce(key, message) {
   if (warned.has(key)) return;
   warned.add(key);
   console.warn(`[fly] ${message}`);

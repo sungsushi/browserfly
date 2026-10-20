@@ -52,7 +52,7 @@
   </header>
   <div class="body">
     <div class="inline">
-      <label>sprite <select id="sprite"><option>auto</option><option>procedural</option></select></label>
+      <label>renderer <select id="sprite"><option value="auto">sprite (auto)</option><option value="procedural">procedural</option></select></label>
       <label><input type="checkbox" id="debug"> debug</label>
     </div>
     <div class="inline">
@@ -105,7 +105,7 @@
     if ((spec.type !== 'number' && spec.type !== 'int') || SKIP.has(key)) continue;
     const row = document.createElement('div');
     row.className = 'row';
-    row.innerHTML = `<label title="${spec.doc}"><span>${key}</span><span>${spec.min}–${spec.max}</span></label>` +
+    row.innerHTML = `<label title="${spec.doc || ''}"><span>${key}</span><span>${spec.min}–${spec.max}</span></label>` +
       `<input type="range"><input type="number">`;
     const [range, number] = row.querySelectorAll('input');
     for (const el of [range, number]) {

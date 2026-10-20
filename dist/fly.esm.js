@@ -1,37 +1,41 @@
+// <define:__SHEET_META__>
+var define_SHEET_META_default = { version: 1, image: "fly-sheet.webp", frameWidth: 143, frameHeight: 163, anchor: [72, 67], bodyLengthPx: 96, clips: { walk: { row: 0, frames: 16, strideBL: 0.6368, loop: true }, idle: { row: 1, frames: 2 } } };
+
 // package.json
 var version = "0.1.0";
 
 // src/params.js
-var num = (def, min, max, doc) => ({ type: "number", default: def, min, max, doc });
-var int = (def, min, max, doc) => ({ type: "int", default: def, min, max, doc });
-var oneOf = (def, values, doc) => ({ type: "enum", default: def, values, doc });
+var num = (def, min, max) => ({ type: "number", default: def, min, max });
+var int = (def, min, max) => ({ type: "int", default: def, min, max });
+var oneOf = (def, values) => ({ type: "enum", default: def, values });
 var SCHEMA = {
-  count: int(1, 1, 50, "number of flies"),
-  size: num(48, 8, 200, "rendered body length (px)"),
-  speed: num(2.5, 0.1, 20, "mean run speed (BL/s)"),
-  speedJitter: num(0.15, 0, 0.5, "SD of the per-run speed multiplier"),
-  runMean: num(2.5, 0.1, 60, "mean run duration with no cursor influence (s)"),
-  stopProbability: num(0.7, 0, 1, "chance that a run ends in a stop rather than an immediate reorientation"),
-  stopMean: num(1.2, 0.05, 30, "mean stop duration (s)"),
-  stopDistribution: oneOf("lognormal", ["exp", "lognormal"], "stop duration distribution"),
-  rotDiffusion: num(0.4, 0, 10, "heading diffusion during runs (rad\xB2/s)"),
-  turnRate: num(5, 0.5, 30, "max angular speed while reorienting (rad/s)"),
-  attraction: num(0.3, -1, 1, "cursor attraction; negative means repulsion"),
-  attractionRange: num(400, 10, 5e3, "cursor falloff length scale (px)"),
-  steeringGain: num(3, 0, 20, "strength of continuous steering during runs (rad/s)"),
-  kappaMax: num(6, 0, 50, "von Mises concentration of reorientation at full attraction"),
-  klinokinesis: num(0.5, 0, 0.9, "modulation of the run-ending hazard by heading"),
-  arrivalRadius: num(1.5, 0, 10, "attracted flies stop within this distance of the cursor (BL; 0 disables)"),
-  lingerMax: num(6, 0, 60, "max time to linger at the cursor (s)"),
-  wallMargin: num(1.5, 0, 5, "soft wall-avoidance zone (BL)"),
-  wallGain: num(6, 0, 30, "wall steering strength (rad/s)"),
-  container: { type: "container", default: null, doc: "Element or CSS selector; null means full-viewport overlay" },
-  zIndex: int(2147483e3, -2147483648, 2147483647, "overlay z-index"),
-  seed: { type: "seed", default: null, min: 0, max: 4294967295, doc: "uint32 seed; null means random" },
-  reducedMotion: oneOf("static", ["static", "hide", "ignore"], "behaviour when prefers-reduced-motion: reduce"),
-  sprite: { type: "sprite", default: "auto", doc: "'auto', 'procedural' or a sprite sheet URL" },
-  touchTargetTimeout: num(4, 0, 30, "how long a tap acts as the cursor on touch devices (s)"),
-  debug: { type: "bool", default: false, doc: "draw the debug overlay" }
+  count: int(1, 1, 50),
+  size: num(96, 8, 200),
+  speed: num(1.2, 0.1, 20),
+  speedJitter: num(0.15, 0, 0.5),
+  runMean: num(2.5, 0.1, 60),
+  stopProbability: num(0.7, 0, 1),
+  stopMean: num(1.2, 0.05, 30),
+  stopDistribution: oneOf("lognormal", ["exp", "lognormal"]),
+  rotDiffusion: num(0.4, 0, 10),
+  headingTau: num(0.3, 0.02, 2),
+  turnRate: num(5, 0.5, 30),
+  attraction: num(0.3, -1, 1),
+  attractionRange: num(400, 10, 5e3),
+  steeringGain: num(3, 0, 20),
+  kappaMax: num(6, 0, 50),
+  klinokinesis: num(0.5, 0, 0.9),
+  arrivalRadius: num(1.5, 0, 10),
+  lingerMax: num(6, 0, 60),
+  wallMargin: num(1.5, 0, 5),
+  wallGain: num(6, 0, 30),
+  container: { type: "container", default: null },
+  zIndex: int(2147483e3, -2147483648, 2147483647),
+  seed: { type: "seed", default: null, min: 0, max: 4294967295 },
+  reducedMotion: oneOf("static", ["static", "hide", "ignore"]),
+  sprite: { type: "sprite", default: "auto" },
+  touchTargetTimeout: num(4, 0, 30),
+  debug: { type: "bool", default: false }
 };
 var DEFAULTS = Object.freeze(
   Object.fromEntries(Object.entries(SCHEMA).map(([k, s]) => [k, s.default]))
@@ -207,6 +211,7 @@ function createFly(init = {}) {
   return {
     x: 0,
     y: 0,
+    omega: 0,
     mode: "run",
     speedMul: 1,
     stopTimer: 0,
@@ -229,7 +234,8 @@ function spawnFly(params, env, rng) {
     y: rng.uniform(box.y0, box.y1),
     theta: rng.vonMises(0, 0),
     speedMul: sampleSpeedMul(params, rng),
-    phase: rng.next()
+    phase: rng.next(),
+    omega: sampleOmega(params, rng)
   });
 }
 function insetBox(bounds, sizePx) {
@@ -300,6 +306,9 @@ function inwardNormal(x, y, box, margin) {
 function sampleSpeedMul(p, rng) {
   return clamp(1 + p.speedJitter * rng.normal(), SPEED_MUL_MIN, SPEED_MUL_MAX);
 }
+function sampleOmega(p, rng) {
+  return Math.sqrt(p.rotDiffusion / p.headingTau) * rng.normal();
+}
 function sampleStop(p, rng) {
   return p.stopDistribution === "exp" ? rng.exponential(p.stopMean) : rng.lognormal(p.stopMean, LOGNORMAL_SIGMA);
 }
@@ -332,7 +341,9 @@ function runStep(f, p, env, box, dt, rng) {
   const c = cursorTerms(f.x, f.y, env.cursor, p);
   const theta0 = f.theta;
   const drift = p.steeringGain * c.s * Math.sin(c.phi - theta0) + wallSteer(f.x, f.y, theta0, box, p.wallMargin * size, p.wallGain);
-  turn(f, drift * dt + Math.sqrt(2 * p.rotDiffusion * dt) * rng.normal());
+  const decay = Math.exp(-dt / p.headingTau);
+  f.omega = f.omega * decay + Math.sqrt(p.rotDiffusion / p.headingTau * (1 - decay * decay)) * rng.normal();
+  turn(f, (drift + f.omega) * dt);
   const v = p.speed * size * f.speedMul;
   let x = f.x + v * Math.cos(f.theta) * dt;
   let y = f.y + v * Math.sin(f.theta) * dt;
@@ -387,6 +398,7 @@ function reorientStep(f, p, dt, rng) {
   if (Math.abs(angleDiff(f.targetTheta, f.theta)) < REORIENT_TOLERANCE) {
     f.mode = "run";
     f.speedMul = sampleSpeedMul(p, rng);
+    f.omega = sampleOmega(p, rng);
     f.lingerTimer = 0;
   }
 }
@@ -632,12 +644,12 @@ function drawProcedural(ctx, fly, size, strideBL) {
   ctx.stroke();
   ctx.lineWidth = Math.max(0.75, size * 0.012) * px;
   ctx.strokeStyle = COLORS.outline;
-  ellipse(ctx, 0, 0.34, 0.15, 0.24, 0, COLORS.abdomen);
+  ellipse(ctx, 0, 0.37, 0.15, 0.22, 0, COLORS.abdomen);
   ctx.stroke();
   ctx.save();
   ctx.clip();
   ctx.beginPath();
-  for (const y of [0.24, 0.34, 0.44, 0.53]) {
+  for (const y of [0.24, 0.33, 0.42, 0.51]) {
     ctx.moveTo(-0.2, y);
     ctx.quadraticCurveTo(0, y + 0.05, 0.2, y);
   }
@@ -646,17 +658,33 @@ function drawProcedural(ctx, fly, size, strideBL) {
   ctx.stroke();
   ctx.restore();
   ctx.strokeStyle = COLORS.outline;
-  ellipse(ctx, 0, 0, 0.13, 0.16, 0, COLORS.thorax);
+  ellipse(ctx, 0, 0, 0.14, 0.2, 0, COLORS.thorax);
   ctx.stroke();
-  ellipse(ctx, 0, -0.33, 0.11, 0.09, 0, COLORS.head);
+  ellipse(ctx, 0, -0.3, 0.12, 0.115, 0, COLORS.head);
   ctx.stroke();
-  ellipse(ctx, -0.075, -0.34, 0.05, 0.065, 0.25, COLORS.eye);
-  ellipse(ctx, 0.075, -0.34, 0.05, 0.065, -0.25, COLORS.eye);
+  ellipse(ctx, -0.085, -0.31, 0.055, 0.07, 0.25, COLORS.eye);
+  ellipse(ctx, 0.085, -0.31, 0.055, 0.07, -0.25, COLORS.eye);
   for (const side of [-1, 1]) {
-    ellipse(ctx, 0.065 * side, 0.34, 0.095, 0.3, -0.13 * side, COLORS.wing);
+    ellipse(ctx, 0.065 * side, 0.38, 0.095, 0.29, -0.13 * side, COLORS.wing);
     ctx.strokeStyle = COLORS.wingEdge;
     ctx.stroke();
   }
+  ctx.restore();
+}
+
+// src/render-sprite.js
+function drawSprite(ctx, sheet, fly, size) {
+  const { img, meta } = sheet;
+  const clip = meta.clips[fly.clip] || meta.clips.walk;
+  const fw = meta.frameWidth;
+  const fh = meta.frameHeight;
+  const frame = fly.frame % clip.frames;
+  const k = size / meta.bodyLengthPx;
+  ctx.save();
+  ctx.translate(fly.x, fly.y);
+  ctx.rotate(fly.theta + Math.PI / 2);
+  ctx.scale(k, k);
+  ctx.drawImage(img, frame * fw, clip.row * fh, fw, fh, -meta.anchor[0], -meta.anchor[1], fw, fh);
   ctx.restore();
 }
 
@@ -721,12 +749,97 @@ function drawDebug(ctx, flies, params, cursor) {
   ctx.restore();
 }
 
+// src/sheet.js
+function validateSheetMeta(meta, image = null) {
+  const errors = [];
+  const posInt = (v) => Number.isInteger(v) && v > 0;
+  if (!meta || typeof meta !== "object") return ["metadata is not an object"];
+  if (meta.version !== 1) errors.push(`unsupported version ${meta.version}`);
+  for (const k of ["frameWidth", "frameHeight", "bodyLengthPx"]) {
+    if (!posInt(meta[k])) errors.push(`${k} must be a positive integer`);
+  }
+  const a = meta.anchor;
+  if (!Array.isArray(a) || a.length !== 2 || !a.every(Number.isFinite)) errors.push("anchor must be [x, y]");
+  const clips = meta.clips;
+  if (!clips || typeof clips !== "object") return errors.concat("clips missing");
+  for (const name of ["walk", "idle"]) {
+    if (!clips[name]) errors.push(`clip "${name}" missing`);
+  }
+  for (const [name, c] of Object.entries(clips)) {
+    if (!Number.isInteger(c.row) || c.row < 0) errors.push(`clip "${name}": row must be an integer \u2265 0`);
+    if (!posInt(c.frames)) errors.push(`clip "${name}": frames must be a positive integer`);
+    if (image && posInt(c.frames) && posInt(meta.frameWidth) && c.frames * meta.frameWidth > image.width) {
+      errors.push(`clip "${name}": ${c.frames} frames of ${meta.frameWidth} px exceed the image width ${image.width}`);
+    }
+    if (image && Number.isInteger(c.row) && posInt(meta.frameHeight) && (c.row + 1) * meta.frameHeight > image.height) {
+      errors.push(`clip "${name}": row ${c.row} is outside the image height ${image.height}`);
+    }
+  }
+  if (clips.walk && !(Number.isFinite(clips.walk.strideBL) && clips.walk.strideBL > 0)) {
+    errors.push('clip "walk": strideBL must be a positive number');
+  }
+  return errors;
+}
+function sheetCandidates(sprite, { scriptSrc: scriptSrc2, inlineSheet, embeddedMeta }) {
+  if (sprite === "procedural") return [];
+  const base = scriptSrc2 || (typeof document !== "undefined" ? document.baseURI : void 0);
+  const url = (u) => new URL(u, base).href;
+  if (sprite === "auto") {
+    if (!embeddedMeta) return [];
+    if (inlineSheet) return [{ image: inlineSheet, meta: embeddedMeta }];
+    return ["fly-sheet.webp", "fly-sheet.png"].map((f) => ({ image: url(f), meta: embeddedMeta }));
+  }
+  if (/\.json(?:[?#]|$)/i.test(sprite)) return [{ image: null, meta: url(sprite) }];
+  return embeddedMeta ? [{ image: url(sprite), meta: embeddedMeta }] : [];
+}
+async function decode(src) {
+  const img = new Image();
+  img.decoding = "async";
+  img.src = src;
+  await img.decode();
+  return typeof createImageBitmap === "function" ? createImageBitmap(img) : img;
+}
+async function loadOne({ image, meta }) {
+  let metaUrl = null;
+  if (typeof meta === "string") {
+    metaUrl = meta;
+    const res = await fetch(metaUrl);
+    if (!res.ok) throw new Error(`metadata ${res.status}`);
+    meta = await res.json();
+  }
+  const images = image ? [image] : [new URL(meta.image, metaUrl).href];
+  if (!image && /\.webp(?:[?#]|$)/i.test(images[0])) images.push(images[0].replace(/\.webp(?=[?#]|$)/i, ".png"));
+  let lastError = null;
+  for (const src of images) {
+    try {
+      const img = await decode(src);
+      const errors = validateSheetMeta(meta, { width: img.width, height: img.height });
+      if (errors.length) throw new Error(errors.join("; "));
+      return { img, meta, url: src };
+    } catch (e) {
+      lastError = e;
+    }
+  }
+  throw lastError;
+}
+async function loadSheet(candidates) {
+  for (const c of candidates) {
+    try {
+      return await loadOne(c);
+    } catch {
+    }
+  }
+  return null;
+}
+
 // src/index.js
 var version2 = version;
 var instances = [];
-var schema = SCHEMA;
+var schema = false ? Object.fromEntries(Object.entries(SCHEMA).map(([k, s]) => [k, { ...s, doc: PARAM_DOCS[k] }])) : SCHEMA;
 var REDUCED_MOTION = "(prefers-reduced-motion: reduce)";
 var currentScript = typeof document !== "undefined" ? document.currentScript : null;
+var scriptSrc = currentScript && currentScript.src ? currentScript.src : null;
+var EMBEDDED_META = define_SHEET_META_default;
 function randomSeed() {
   if (typeof crypto !== "undefined" && crypto.getRandomValues) {
     return crypto.getRandomValues(new Uint32Array(1))[0];
@@ -739,8 +852,9 @@ function create(options = {}) {
   let flies = [];
   let overlay = null;
   const input = createInput();
-  const meta = PLACEHOLDER_META;
-  const strideBL = meta.clips.walk.strideBL;
+  let meta = EMBEDDED_META || PLACEHOLDER_META;
+  let sheet = null;
+  let loadToken = 0;
   let destroyed = false;
   let paused = false;
   let onScreen = true;
@@ -763,7 +877,14 @@ function create(options = {}) {
     overlay.clear();
     if (motion() === "hide") return;
     const { ctx } = overlay;
-    for (const f of flies) drawProcedural(ctx, f, params.size, strideBL);
+    if (sheet) {
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+      for (const f of flies) drawSprite(ctx, sheet, f, params.size);
+    } else {
+      const strideBL = meta.clips.walk.strideBL;
+      for (const f of flies) drawProcedural(ctx, f, params.size, strideBL);
+    }
     if (params.debug) drawDebug(ctx, flies, params, cursor());
   }
   function update(dt) {
@@ -818,6 +939,26 @@ function create(options = {}) {
     onScreen = visible;
     sync();
   }
+  function loadSprite() {
+    const token = ++loadToken;
+    sheet = null;
+    const candidates = sheetCandidates(params.sprite, {
+      scriptSrc,
+      inlineSheet: null,
+      embeddedMeta: EMBEDDED_META
+    });
+    if (!candidates.length) return;
+    loadSheet(candidates).then((loaded) => {
+      if (destroyed || token !== loadToken) return;
+      if (!loaded) {
+        warnOnce("sprite", `sprite sheet could not be loaded (${params.sprite}); using the procedural renderer`);
+        return;
+      }
+      sheet = loaded;
+      meta = loaded.meta;
+      if (!running()) render();
+    });
+  }
   function buildOverlay() {
     if (overlay) overlay.destroy();
     overlay = createOverlay({ container: params.container, zIndex: params.zIndex, onResize, onVisible });
@@ -827,6 +968,7 @@ function create(options = {}) {
   if (mql) mql.addEventListener("change", sync);
   buildOverlay();
   spawnTo(params.count);
+  loadSprite();
   const swarm = {
     /** Live update. Count changes add or remove flies; a new seed restarts the swarm. */
     set(partial = {}) {
@@ -841,6 +983,7 @@ function create(options = {}) {
         flies = [];
       }
       if (params.size !== prev.size) onResize();
+      if (params.sprite !== prev.sprite) loadSprite();
       spawnTo(params.count);
       sync();
       return swarm;
@@ -874,6 +1017,8 @@ function create(options = {}) {
         cursor: destroyed ? null : cursor(),
         bounds: { ...overlay.bounds },
         fps,
+        renderer: sheet ? "sprite" : "procedural",
+        sheetUrl: sheet ? sheet.url.startsWith("data:") ? "inline" : sheet.url : null,
         params: { ...params, container: params.container && String(params.container) },
         running: running()
       };

@@ -1,7 +1,7 @@
 // Shared helpers for the unit tests.
 import { DEFAULTS } from '../../src/params.js';
 import { createRng } from '../../src/rng.js';
-import { createFly, step } from '../../src/engine.js';
+import { createFly, step, sampleOmega } from '../../src/engine.js';
 
 /** Base seed offset; `npm run test:sweep` reruns the suite with FLY_SEED_BASE=1..20. */
 export const SEED_BASE = Number(process.env.FLY_SEED_BASE ?? 0) >>> 0;
@@ -15,9 +15,19 @@ export const DT = 1 / 60;
 export const SIZE = 48;
 export const BIG = { w: 1e6, h: 1e6 };
 
-/** Engine params: defaults overlaid with `over` (not validated, so e.g. Infinity is allowed). */
+/**
+ * Engine params: defaults overlaid with `over` (not validated, so e.g. Infinity is allowed).
+ * `speed` is pinned to the rev 3 default (2.5 BL/s) so the statistical criteria, which were set at
+ * that speed, are unchanged by the rev 4 default of 1.2 BL/s. Size is pinned via SIZE.
+ */
 export function P(over = {}) {
-  return { ...DEFAULTS, ...over };
+  return { ...DEFAULTS, speed: 2.5, ...over };
+}
+
+/** Var[Δθ(t)] for OU heading noise from a stationary start: 2·D·(t − τ·(1 − e^(−t/τ))). */
+export function expectedDiffusionVariance(p, t) {
+  const tau = p.headingTau;
+  return 2 * p.rotDiffusion * (t - tau * (1 - Math.exp(-t / tau)));
 }
 
 export function mean(a) {
@@ -96,14 +106,14 @@ export function collectEpisodes(p, { dt = DT, nRuns, seed, cursorFn = null }) {
   return { runs, stops, targets, endedInStop };
 }
 
-/** Variance of thetaUnwrapped(t) − thetaUnwrapped(0) across n independent flies. */
+/** Variance of thetaUnwrapped(t) − thetaUnwrapped(0) across n flies, each starting with a stationary omega. */
 export function diffusionVariance(p, { dt = DT, n, t, seed }) {
   const rng = createRng(seed);
   const env = { cursor: null, bounds: BIG, sizePx: SIZE };
   const steps = Math.round(t / dt);
   const deltas = new Array(n);
   for (let i = 0; i < n; i++) {
-    let fly = createFly({ x: BIG.w / 2, y: BIG.h / 2, theta: rng.vonMises(0, 0) });
+    let fly = createFly({ x: BIG.w / 2, y: BIG.h / 2, theta: rng.vonMises(0, 0), omega: sampleOmega(p, rng) });
     const start = fly.thetaUnwrapped;
     for (let k = 0; k < steps; k++) fly = step(fly, p, env, dt, rng);
     deltas[i] = fly.thetaUnwrapped - start;
@@ -112,6 +122,6 @@ export function diffusionVariance(p, { dt = DT, n, t, seed }) {
 }
 
 export const FLY_NUMERIC_FIELDS = [
-  'x', 'y', 'theta', 'thetaUnwrapped', 'speedMul', 'stopTimer', 'lingerTimer',
+  'x', 'y', 'theta', 'thetaUnwrapped', 'omega', 'speedMul', 'stopTimer', 'lingerTimer',
   'targetTheta', 'phase', 'frame', 'idleTimer',
 ];

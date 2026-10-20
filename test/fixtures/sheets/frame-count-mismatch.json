@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "image": "fly-sheet.webp",
+  "frameWidth": 143,
+  "frameHeight": 163,
+  "anchor": [
+    72,
+    67
+  ],
+  "bodyLengthPx": 96,
+  "clips": {
+    "walk": {
+      "row": 0,
+      "frames": 20,
+      "strideBL": 0.6368,
+      "loop": true
+    },
+    "idle": {
+      "row": 1,
+      "frames": 2
+    }
+  },
+  "source": {
+    "generator": "flygym",
+    "flygymVersion": "2.1.0",
+    "controller": "kinematic replay of recorded walking (flygym_demo.spotlight_data.MotionSnippet)",
+    "notes": "NeuroMechFly, orthographic overhead camera; one stride of 92.3 ms (10.8 Hz) at 6.9 BL/s real speed; visible body length 2.59 mm; 64-colour palette"
+  }
+}

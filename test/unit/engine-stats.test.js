@@ -1,10 +1,10 @@
 // Engine statistics with no cursor and no walls in play (tests 10–14, 23, 24).
 import { describe, it, expect } from 'vitest';
 import { createRng } from '../../src/rng.js';
-import { createFly, step, MAX_DT, SPEED_MUL_MAX } from '../../src/engine.js';
+import { createFly, step, sampleOmega, MAX_DT, SPEED_MUL_MAX } from '../../src/engine.js';
 import { angleDiff } from '../../src/angles.js';
 import {
-  seedFor, DT, SIZE, BIG, P, mean, sd, circular, collectEpisodes, diffusionVariance,
+  seedFor, DT, SIZE, BIG, P, mean, sd, circular, collectEpisodes, diffusionVariance, expectedDiffusionVariance,
 } from './helpers.js';
 
 const runStats = (runs) => ({ mean: mean(runs), cv: sd(runs) / mean(runs) });
@@ -23,11 +23,30 @@ describe('engine statistics', () => {
     expect(Math.abs(disp / expected - 1)).toBeLessThan(0.001);
   });
 
-  it('11. rotational diffusion: Var[Δθ] at t = 5 s is 2·D_r·t ± 8% (10,000 flies)', () => {
+  it('11. rotational diffusion: Var[Δθ] at t = 5 s is 2·D_r·(t − τ(1 − e^(−t/τ))) ± 8% (10,000 flies)', () => {
     const p = P({ runMean: Infinity });
     const v = diffusionVariance(p, { n: 10000, t: 5, seed: seedFor(11) });
-    const expected = 2 * p.rotDiffusion * 5;
+    const expected = expectedDiffusionVariance(p, 5);
     expect(Math.abs(v / expected - 1)).toBeLessThan(0.08);
+  });
+
+  it('heading noise is smooth (rev 4): stationary omega SD = sqrt(D/τ), per-frame turn ≪ white noise', () => {
+    const p = P({ runMean: Infinity });
+    const rng = createRng(seedFor(110));
+    const env = { cursor: null, bounds: BIG, sizePx: SIZE };
+    let fly = createFly({ x: 5e5, y: 5e5, omega: sampleOmega(p, rng) });
+    const omegas = [];
+    const turns = [];
+    for (let i = 0; i < 200000; i++) {
+      const next = step(fly, p, env, DT, rng);
+      omegas.push(next.omega);
+      turns.push(next.thetaUnwrapped - fly.thetaUnwrapped);
+      fly = next;
+    }
+    // 200k steps ≈ 185 correlation times: SE of the SD ≈ 5%; ±15% is ~3σ.
+    expect(Math.abs(sd(omegas) / Math.sqrt(p.rotDiffusion / p.headingTau) - 1)).toBeLessThan(0.15);
+    // White noise would give sqrt(2·D·dt) ≈ 0.115 rad per frame; OU gives ≈ sqrt(D/τ)·dt ≈ 0.019.
+    expect(sd(turns)).toBeLessThan(0.3 * Math.sqrt(2 * p.rotDiffusion * DT));
   });
 
   it('12. run durations: mean = runMean ± 4%, CV = 1 ± 0.06 (20k runs)', () => {
@@ -103,7 +122,7 @@ describe('engine statistics', () => {
       expect(Math.abs(s.cv - 1)).toBeLessThan(0.06);
 
       const v = diffusionVariance(P({ runMean: Infinity }), { dt, n: 10000, t: 5, seed: seedFor(231) });
-      expect(Math.abs(v / (2 * p.rotDiffusion * 5) - 1)).toBeLessThan(0.08);
+      expect(Math.abs(v / expectedDiffusionVariance(p, 5) - 1)).toBeLessThan(0.08);
     });
   });
 

@@ -1,25 +1,33 @@
 // Public API, lifecycle and auto-init (PLAN.md §4.7–4.8).
 import { version as pkgVersion } from '../package.json';
-import { SCHEMA, resolveParams, validateParams, parseDataset } from './params.js';
+import { SCHEMA, resolveParams, validateParams, parseDataset, warnOnce } from './params.js';
 import { createRng } from './rng.js';
 import { spawnFly, step, clampToBounds } from './engine.js';
 import { animate, PLACEHOLDER_META } from './animator.js';
 import { createInput } from './input.js';
 import { createOverlay } from './overlay.js';
 import { drawProcedural } from './render-procedural.js';
+import { drawSprite } from './render-sprite.js';
 import { drawDebug } from './render-debug.js';
+import { sheetCandidates, loadSheet } from './sheet.js';
+import { PARAM_DOCS } from './param-docs.js';
 
 export const version = pkgVersion;
 
 /** Live swarms; auto-init puts its swarm at instances[0]. */
 export const instances = [];
 
-/** The parameter schema (defaults, ranges, docs), used by the demo panel. */
-export const schema = SCHEMA;
+/** The parameter schema (defaults, ranges; descriptions in debug builds), used by the demo panel. */
+export const schema = __DEBUG__
+  ? Object.fromEntries(Object.entries(SCHEMA).map(([k, s]) => [k, { ...s, doc: PARAM_DOCS[k] }]))
+  : SCHEMA;
 
 const REDUCED_MOTION = '(prefers-reduced-motion: reduce)';
 // Captured at load: currentScript is only set while the bundle is first evaluated.
 const currentScript = typeof document !== 'undefined' ? document.currentScript : null;
+const scriptSrc = currentScript && currentScript.src ? currentScript.src : null;
+// The bundle's copy of fly-sheet.json (null in builds without a sheet).
+const EMBEDDED_META = __SHEET_META__;
 
 function randomSeed() {
   if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
@@ -30,7 +38,7 @@ function randomSeed() {
 
 /**
  * Creates a swarm of flies. Options are validated against the schema (PLAN.md §4.2).
- * Sprite sheets arrive in M5; until then every swarm uses the procedural renderer.
+ * Flies are drawn procedurally until the sprite sheet has loaded, or for good if it can't be.
  */
 export function create(options = {}) {
   let params = resolveParams(options);
@@ -38,8 +46,9 @@ export function create(options = {}) {
   let flies = [];
   let overlay = null;
   const input = createInput();
-  const meta = PLACEHOLDER_META;
-  const strideBL = meta.clips.walk.strideBL;
+  let meta = EMBEDDED_META || PLACEHOLDER_META;
+  let sheet = null; // { img, meta, url } once loaded
+  let loadToken = 0;
 
   let destroyed = false;
   let paused = false;
@@ -73,7 +82,14 @@ export function create(options = {}) {
     overlay.clear();
     if (motion() === 'hide') return;
     const { ctx } = overlay;
-    for (const f of flies) drawProcedural(ctx, f, params.size, strideBL);
+    if (sheet) {
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      for (const f of flies) drawSprite(ctx, sheet, f, params.size);
+    } else {
+      const strideBL = meta.clips.walk.strideBL;
+      for (const f of flies) drawProcedural(ctx, f, params.size, strideBL);
+    }
     if (params.debug) drawDebug(ctx, flies, params, cursor());
   }
 
@@ -137,6 +153,25 @@ export function create(options = {}) {
     sync();
   }
 
+  function loadSprite() {
+    const token = ++loadToken;
+    sheet = null;
+    const candidates = sheetCandidates(params.sprite, {
+      scriptSrc, inlineSheet: __INLINE_SHEET__, embeddedMeta: EMBEDDED_META,
+    });
+    if (!candidates.length) return;
+    loadSheet(candidates).then((loaded) => {
+      if (destroyed || token !== loadToken) return;
+      if (!loaded) {
+        warnOnce('sprite', `sprite sheet could not be loaded (${params.sprite}); using the procedural renderer`);
+        return;
+      }
+      sheet = loaded;
+      meta = loaded.meta;
+      if (!running()) render();
+    });
+  }
+
   function buildOverlay() {
     if (overlay) overlay.destroy();
     overlay = createOverlay({ container: params.container, zIndex: params.zIndex, onResize, onVisible });
@@ -148,6 +183,7 @@ export function create(options = {}) {
 
   buildOverlay();
   spawnTo(params.count);
+  loadSprite();
 
   const swarm = {
     /** Live update. Count changes add or remove flies; a new seed restarts the swarm. */
@@ -163,6 +199,7 @@ export function create(options = {}) {
         flies = [];
       }
       if (params.size !== prev.size) onResize();
+      if (params.sprite !== prev.sprite) loadSprite();
       spawnTo(params.count);
       sync();
       return swarm;
@@ -196,6 +233,8 @@ export function create(options = {}) {
         cursor: destroyed ? null : cursor(),
         bounds: { ...overlay.bounds },
         fps,
+        renderer: sheet ? 'sprite' : 'procedural',
+        sheetUrl: sheet ? (sheet.url.startsWith('data:') ? 'inline' : sheet.url) : null,
         params: { ...params, container: params.container && String(params.container) },
         running: running(),
       };

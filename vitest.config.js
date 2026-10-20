@@ -4,6 +4,7 @@ export default defineConfig({
   define: {
     __DEBUG__: 'true',
     __INLINE_SHEET__: 'null',
+    __SHEET_META__: 'null',
   },
   test: {
     include: ['test/unit/**/*.test.js'],

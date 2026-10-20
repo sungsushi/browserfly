@@ -1,6 +1,6 @@
 // Procedural fly renderer (PLAN.md §4.9). Draws a top-down fly with canvas primitives.
 // Geometry is in body lengths (BL) with the thorax centre at the origin and the fly facing
-// up (−y): head tip at y = −0.42, abdomen tip at y = +0.58.
+// up (−y): head tip at y ≈ −0.42, abdomen tip at y ≈ +0.59. The head overlaps the thorax.
 
 const TWO_PI = 2 * Math.PI;
 const STANCE = 0.6;
@@ -84,12 +84,12 @@ export function drawProcedural(ctx, fly, size, strideBL) {
   // Body: abdomen, thorax, head, with a thin outline for contrast on light and dark pages.
   ctx.lineWidth = Math.max(0.75, size * 0.012) * px;
   ctx.strokeStyle = COLORS.outline;
-  ellipse(ctx, 0, 0.34, 0.15, 0.24, 0, COLORS.abdomen);
+  ellipse(ctx, 0, 0.37, 0.15, 0.22, 0, COLORS.abdomen);
   ctx.stroke();
   ctx.save();
   ctx.clip();
   ctx.beginPath();
-  for (const y of [0.24, 0.34, 0.44, 0.53]) {
+  for (const y of [0.24, 0.33, 0.42, 0.51]) {
     ctx.moveTo(-0.2, y);
     ctx.quadraticCurveTo(0, y + 0.05, 0.2, y);
   }
@@ -99,16 +99,16 @@ export function drawProcedural(ctx, fly, size, strideBL) {
   ctx.restore();
 
   ctx.strokeStyle = COLORS.outline;
-  ellipse(ctx, 0, 0, 0.13, 0.16, 0, COLORS.thorax);
+  ellipse(ctx, 0, 0, 0.14, 0.2, 0, COLORS.thorax);
   ctx.stroke();
-  ellipse(ctx, 0, -0.33, 0.11, 0.09, 0, COLORS.head);
+  ellipse(ctx, 0, -0.3, 0.12, 0.115, 0, COLORS.head);
   ctx.stroke();
-  ellipse(ctx, -0.075, -0.34, 0.05, 0.065, 0.25, COLORS.eye);
-  ellipse(ctx, 0.075, -0.34, 0.05, 0.065, -0.25, COLORS.eye);
+  ellipse(ctx, -0.085, -0.31, 0.055, 0.07, 0.25, COLORS.eye);
+  ellipse(ctx, 0.085, -0.31, 0.055, 0.07, -0.25, COLORS.eye);
 
   // Folded wings over the abdomen.
   for (const side of [-1, 1]) {
-    ellipse(ctx, 0.065 * side, 0.34, 0.095, 0.3, -0.13 * side, COLORS.wing);
+    ellipse(ctx, 0.065 * side, 0.38, 0.095, 0.29, -0.13 * side, COLORS.wing);
     ctx.strokeStyle = COLORS.wingEdge;
     ctx.stroke();
   }

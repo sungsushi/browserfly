@@ -20,6 +20,7 @@ export function createFly(init = {}) {
   return {
     x: 0,
     y: 0,
+    omega: 0,
     mode: 'run',
     speedMul: 1,
     stopTimer: 0,
@@ -45,6 +46,7 @@ export function spawnFly(params, env, rng) {
     theta: rng.vonMises(0, 0),
     speedMul: sampleSpeedMul(params, rng),
     phase: rng.next(),
+    omega: sampleOmega(params, rng),
   });
 }
 
@@ -134,6 +136,11 @@ function sampleSpeedMul(p, rng) {
   return clamp(1 + p.speedJitter * rng.normal(), SPEED_MUL_MIN, SPEED_MUL_MAX);
 }
 
+/** Heading-noise angular velocity from the OU process's stationary distribution (§4.4, rev 4). */
+export function sampleOmega(p, rng) {
+  return Math.sqrt(p.rotDiffusion / p.headingTau) * rng.normal();
+}
+
 function sampleStop(p, rng) {
   return p.stopDistribution === 'exp'
     ? rng.exponential(p.stopMean)
@@ -176,7 +183,11 @@ function runStep(f, p, env, box, dt, rng) {
 
   const drift = p.steeringGain * c.s * Math.sin(c.phi - theta0) +
     wallSteer(f.x, f.y, theta0, box, p.wallMargin * size, p.wallGain);
-  turn(f, drift * dt + Math.sqrt(2 * p.rotDiffusion * dt) * rng.normal());
+  // Heading noise: exact Ornstein–Uhlenbeck update of omega. Long-run diffusion is rotDiffusion,
+  // but the heading changes smoothly instead of twitching every frame.
+  const decay = Math.exp(-dt / p.headingTau);
+  f.omega = f.omega * decay + Math.sqrt((p.rotDiffusion / p.headingTau) * (1 - decay * decay)) * rng.normal();
+  turn(f, (drift + f.omega) * dt);
 
   const v = p.speed * size * f.speedMul;
   let x = f.x + v * Math.cos(f.theta) * dt;
@@ -238,12 +249,13 @@ function reorientStep(f, p, dt, rng) {
   if (Math.abs(angleDiff(f.targetTheta, f.theta)) < REORIENT_TOLERANCE) {
     f.mode = 'run';
     f.speedMul = sampleSpeedMul(p, rng);
+    f.omega = sampleOmega(p, rng);
     f.lingerTimer = 0;
   }
 }
 
 function assertFinite(f) {
-  for (const k of ['x', 'y', 'theta', 'thetaUnwrapped', 'speedMul', 'stopTimer', 'lingerTimer', 'targetTheta']) {
+  for (const k of ['x', 'y', 'theta', 'thetaUnwrapped', 'omega', 'speedMul', 'stopTimer', 'lingerTimer', 'targetTheta']) {
     if (!Number.isFinite(f[k])) throw new Error(`fly.${k} is not finite: ${f[k]}`);
   }
 }
