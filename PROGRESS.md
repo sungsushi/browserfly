@@ -1,6 +1,6 @@
 # Progress
 
-**Current milestone:** M8 — Page-anchored flies — ✅ tests pass (committed). 🚦 **Gate:** waiting for the user to try `anchor: 'page'` in the demo and on their own page. M7 (optional polish) only if asked.
+**Current milestone:** M8 — Page-anchored flies — ✅ done (committed; gate closed 2026-10-20, user approved). No milestone in progress. M7 (optional polish) only if asked.
 
 ## Done
 - **M0** — scaffolding (git, package.json scripts, esbuild/vitest/playwright/eslint configs, serve + sweep scripts).
@@ -53,6 +53,7 @@
 
 - **M8** — `anchor: 'viewport' | 'page'` (§4.10): fixed viewport-sized canvas, page coordinates, culling to the visible band, spawning in the visible band, mouse cursor follows scroll / taps stay on the page, page-size observation (html + body), redraw on scroll when static or paused, live switching without jumps, container + page warns once. `debug()` adds `anchor` and `scroll`. Demo: anchor select and more content. README section.
   - Budget: debug-overlay text labels and sheet-validation messages are now debug-build only; the unused placeholder metadata is dropped from bundles with a sheet (`__HAS_SHEET__`). `fly.min.js` 7.95 KB gz (8,145 B of 8,192; 47 B headroom), `fly.inline.min.js` 37.2 KB gz.
+  - **M8 gate (2026-10-20):** user approved page anchoring.
   - Tests: `npm test` 90/90 (new anchor params test); `test/e2e/anchor.spec.js` (tests 1–11 + touch) 36/36, ×3 repeats 108/108; full `npm run test:e2e` 108/108. Perf with 20 page-anchored flies: Chromium 0.14, WebKit 0.33, Firefox 1.3 ms/frame.
 
 ## Open issues
