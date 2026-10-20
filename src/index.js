@@ -50,6 +50,8 @@ export function create(options = {}) {
   let meta = __HAS_SHEET__ ? EMBEDDED_META : PLACEHOLDER_META;
   let sheet = null; // { img, meta, url } once loaded
   let loadToken = 0;
+  // Only an explicit anchor: 'page' warns in container mode; the default is silently ignored there.
+  let anchorSet = 'anchor' in options;
 
   let destroyed = false;
   let paused = false;
@@ -87,7 +89,7 @@ export function create(options = {}) {
 
   // Page anchoring applies in viewport mode only; a container already scrolls with its content.
   function applyAnchor() {
-    if (params.anchor === 'page' && overlay.host) warnOnce('anchor', 'anchor "page" is ignored with a container');
+    if (anchorSet && params.anchor === 'page' && overlay.host) warnOnce('anchor', 'anchor "page" is ignored with a container');
     const page = params.anchor === 'page' && !overlay.host;
     if (page === overlay.page) return;
     // Convert between viewport and page coordinates so nothing moves on screen.
@@ -235,6 +237,7 @@ export function create(options = {}) {
         flies = [];
       }
       if (params.size !== prev.size) onResize();
+      if ('anchor' in changes) anchorSet = true;
       if (params.anchor !== prev.anchor) applyAnchor();
       if (params.sprite !== prev.sprite) loadSprite();
       spawnTo(params.count);

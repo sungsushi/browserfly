@@ -72,7 +72,7 @@ test('2. anchoring: after scrolling, a fly is drawn where its page position now 
 
 test('3. viewport mode is unchanged: the same scroll leaves the fly on screen where it was', async ({ page }) => {
   await openLongPage(page);
-  await create(page, { count: 1, seed: 12 });
+  await create(page, { anchor: 'viewport', count: 1, seed: 12 });
   await page.evaluate(() => window.swarm.pause());
   const f = (await snap(page)).flies[0];
   await scrollTo(page, 300);
@@ -198,7 +198,7 @@ test.describe('8. static reduced motion', () => {
 test('9. live switching: no fly moves on screen when the anchor changes', async ({ page }) => {
   await openLongPage(page);
   await scrollTo(page, 700);
-  await create(page, { count: 10, seed: 19 });
+  await create(page, { anchor: 'viewport', count: 10, seed: 19 });
   await page.evaluate(() => window.swarm.pause());
   const vh = await viewportHeight(page);
   const screen = (s) => s.flies.map((f) => ({ x: f.x, y: f.y - s.scroll.y }));
@@ -236,6 +236,21 @@ test('10. container mode: anchor page warns once and behaves like container mode
   expect(s.bounds).toEqual({ w: 400, h: 240 });
   expect(await page.evaluate(() => document.querySelector('canvas').parentElement.id)).toBe('box');
   expect(warnings.filter((w) => /anchor/.test(w))).toHaveLength(1);
+});
+
+test('default: page anchoring; a container with the default anchor does not warn', async ({ page }) => {
+  const warnings = [];
+  page.on('console', (m) => { if (m.type() === 'warning') warnings.push(m.text()); });
+  await openLongPage(page);
+  await create(page, { count: 2 });
+  expect((await snap(page)).anchor).toBe('page');
+  await page.evaluate(() => {
+    window.swarm.destroy();
+    document.getElementById('box').style.position = 'relative';
+    window.swarm = window.Fly.create({ container: '#box', count: 2, sprite: 'procedural' });
+  });
+  expect((await snap(page)).anchor).toBe('viewport');
+  expect(warnings).toEqual([]);
 });
 
 test('11. performance (soft): 20 page-anchored flies on a long page', async ({ page }, info) => {

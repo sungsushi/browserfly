@@ -58,8 +58,8 @@ describe('9. params', () => {
     expect(resolveParams({ speed: 4 }, p).attraction).toBe(0.8);
   });
 
-  it('anchor: viewport (default) or page; anything else is dropped with a warning (M8)', () => {
-    expect(DEFAULTS.anchor).toBe('viewport');
+  it('anchor: page (default) or viewport; anything else is dropped with a warning (M8)', () => {
+    expect(DEFAULTS.anchor).toBe('page');
     expect(validateParams({ anchor: 'page' })).toEqual({ anchor: 'page' });
     expect(validateParams({ anchor: 'viewport' })).toEqual({ anchor: 'viewport' });
     expect(validateParams({ anchor: 'document' })).toEqual({});

@@ -31,6 +31,10 @@ Changes from the first draft, so the reasoning isn't lost:
 - Ranges added for every parameter. `angleDiff` sign convention, mode-transition timing, corner wall normals, the margin origin, tiny bounds, test 17 censoring and test 25 start phase are now specified.
 - The repository root is the current folder, not `fly-sprite/`.
 
+### Revision notes (rev 7, after M8 — user decision)
+
+`anchor` defaults to `'page'` (§4.2). In container mode the default is ignored silently; only an explicit `anchor: 'page'` (option, data attribute or `set()`) warns. Tests that are about viewport behaviour pin `anchor: 'viewport'`.
+
 ### Revision notes (rev 6, after M6 — user decision)
 
 Flies can be anchored to the page instead of the viewport, so they scroll with the content (§4.10, milestone M8). New option `anchor: 'viewport' | 'page'`, default `'viewport'` (today's behaviour). In page mode the canvas stays fixed and viewport-sized; fly positions are page coordinates and are drawn shifted by the scroll offset. A canvas as tall as the page was rejected: at 2× pixel density a 10,000 px page would need a ~200 MB backing store, beyond browser canvas limits (Safari's especially). Flies spawn inside the visible part of the page and then roam the whole page. Only simple vertical scrolling of the document is in scope. M8 is done before the optional M7.
@@ -216,7 +220,7 @@ browserfly/
 | `reducedMotion` | `'static'` | `'static'` \| `'hide'` \| `'ignore'` | behaviour when `prefers-reduced-motion: reduce` |
 | `sprite` | `'auto'` | `'auto'` \| URL \| `'procedural'` | sprite source |
 | `touchTargetTimeout` | 5 | s, 0–30 | how long a tap acts as the cursor on touch devices (rev 5: was 4) |
-| `anchor` | `'viewport'` | `'viewport'` \| `'page'` | `'viewport'`: flies stay on screen while the page scrolls under them. `'page'`: flies live on the page and scroll with the content (§4.10). Viewport mode only; ignored with a warning when `container` is set (a container already scrolls with its content) |
+| `anchor` | `'page'` | `'viewport'` \| `'page'` | `'page'` (rev 7 default; was `'viewport'`): flies live on the page and scroll with the content (§4.10). `'viewport'`: flies stay on screen while the page scrolls under them. Viewport mode only; with a `container` it is ignored (a container already scrolls with its content), with a warning only if `'page'` was set explicitly |
 | `debug` | `false` | bool | draw the debug overlay |
 
 `params.js` defines these in a single schema table (default, type, range or allowed values) that also drives validation, data-attribute parsing and the README table. It must clamp out-of-range values (with `console.warn` once per key) and ignore unknown keys with a warning. Data attributes use kebab-case (for example `data-attraction`, `data-run-mean`) and are parsed as numbers or booleans where the schema type says so. Strings are kept for string or enum params. `data-fly` is the auto-init flag, not a param.
@@ -335,7 +339,7 @@ Swarm.debug() → { flies: FlyState[], cursor, bounds, fps }   // read-only snap
 
 ### 4.10 Page anchoring (`anchor: 'page'`, rev 6)
 
-Applies in viewport mode only (`container` is `null`). With a container, `anchor: 'page'` is ignored and a single `console.warn` is emitted, because the canvas is already part of the content.
+Applies in viewport mode only (`container` is `null`). With a container, `anchor: 'page'` is ignored, because the canvas is already part of the content; a single `console.warn` is emitted only if `'page'` was set explicitly (rev 7: it is the default).
 
 - **Canvas.** Unchanged: one fixed, viewport-sized canvas (backing store = viewport × DPR). Never size a canvas to the page.
 - **Coordinates.** Fly positions, the cursor and `bounds` are page coordinates: origin at the top-left of the document, y down. `bounds = { w: viewport width, h: max(document scroll height, viewport height) }`. Horizontal scrolling is out of scope: the page width is the viewport width and `scrollX` is ignored.

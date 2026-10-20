@@ -50,13 +50,13 @@ Fly.create({ container: document.querySelector('#hero'), count: 1 });
 
 ### Flies that scroll with the page
 
-By default the flies stay on screen while the page scrolls under them. With `anchor: 'page'` they
-live on the page instead: they keep their place on the content and scroll away with it, and the
-ones you've scrolled past keep walking out of sight. New flies appear in the part of the page that's
-visible, then roam the whole page.
+By default (`anchor: 'page'`) the flies live on the page: they keep their place on the content and
+scroll away with it, and the ones you've scrolled past keep walking out of sight. New flies appear in
+the part of the page that's visible, then roam the whole page. With `anchor: 'viewport'` they stay on
+screen instead, while the page scrolls under them:
 
 ```html
-<script src="fly.inline.min.js" data-fly data-anchor="page" defer></script>
+<script src="fly.inline.min.js" data-fly data-anchor="viewport" defer></script>
 ```
 
 Only ordinary vertical scrolling of the document is supported (not horizontal scrolling or
@@ -116,7 +116,7 @@ length (`size`).
 | `sprite` | `data-sprite` | `'auto'` | `'auto'`, `'procedural'` or a URL | 'auto', 'procedural' or a sprite sheet URL |
 | `touchTargetTimeout` | `data-touch-target-timeout` | `5` | 0 – 30 | how long a tap acts as the cursor on touch devices (s) |
 | `debug` | `data-debug` | `false` | `true`, `false` | draw the debug overlay |
-| `anchor` | `data-anchor` | `'viewport'` | `'viewport'`, `'page'` | 'viewport': flies stay on screen while the page scrolls; 'page': flies live on the page and scroll with it (viewport mode only) |
+| `anchor` | `data-anchor` | `'page'` | `'viewport'`, `'page'` | 'page': flies live on the page and scroll with it; 'viewport': flies stay on screen while the page scrolls (ignored with a container) |
 <!-- params:end -->
 
 The default walking speed is slow motion on purpose: a real fly walks about 6 body lengths per

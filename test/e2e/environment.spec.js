@@ -32,7 +32,8 @@ test.describe('5. reduced motion', () => {
 
 test('6. resize: flies are inside the new inset bounds within one frame', async ({ page }) => {
   await page.setViewportSize({ width: 1200, height: 800 });
-  await openDemo(page, { seed: 4, count: 10 });
+  // Viewport anchoring: this criterion is about the window's bounds (the default is now 'page').
+  await openDemo(page, { seed: 4, count: 10, anchor: 'viewport' });
   await page.waitForTimeout(300);
   await page.setViewportSize({ width: 400, height: 300 });
   await nextFrame(page);

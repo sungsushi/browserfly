@@ -58,12 +58,14 @@
 
 - **Demo page text (2026-10-20, user request):** the Drosophila intro is replaced by a block quote from Karl Popper's *Of Clouds and Clocks* (1965), typeset in Lora (Google Fonts) on the same background; scan artefacts cleaned (joined hyphenation, em dashes, curly quotes, stray dots, a stray "?" after "solar system", run-together words). The panel starts collapsed on screens ≤ 640 px; on wide screens the text column sits clear of the panel. E2E test 2 (click-through) now clicks the panel's collapse button, which is under the fly layer, instead of the removed demo button. `npm run test:e2e` 108/108.
 
+- **Rev 7 (2026-10-20, user request):** `anchor` defaults to `'page'`; a container with the default anchor no longer warns (only an explicit `'page'` does). Viewport-specific e2e tests pin `anchor: 'viewport'`; new e2e test for the default. Demo quotation gets a three-line drop cap (`initial-letter` in Chromium and Safari, sized float fallback in Firefox). `npm test` 90/90, `npm run test:e2e` 111/111; `fly.min.js` 8,165 of 8,192 B gz.
+
 ## Open issues
 - **CI not verified on GitHub:** no git remote is configured, so the workflow has only been validated (YAML) and its steps run locally.
 - **No licence for this repository's own code** (README says so). FlyGym/NeuroMechFly are Apache-2.0 and credited.
 - Sheet budget: met at 64 colours with ~3 KB WebP headroom. Re-rendering at other settings may need 48 colours (18 KB) or fewer frames.
 - Real speed in the chosen stride is 6.9 BL/s with strideBL 0.64; at the rev 4 default of 1.2 BL/s the legs step at ~1.9 Hz (≈ 32 display frames per stride).
-- **`fly.min.js` has ~47 B of headroom under 8 KB gz.** The easy trims are used up (debug labels and validation messages are debug-only). Further runtime features (e.g. click-to-fly-away) will need the budget raised or a feature trade — ask the user.
+- **`fly.min.js` has ~27 B of headroom under 8 KB gz.** The easy trims are used up (debug labels and validation messages are debug-only). Further runtime features (e.g. click-to-fly-away) will need the budget raised or a feature trade — ask the user.
 - E2E filters Chromium's "Failed to load resource" console errors in the 404 test: they come from the network layer, not script.
 - Firefox exceeds the 2 ms soft perf budget with 20 flies (headless Firefox canvas is slower; Chromium/WebKit are ~8× under). Candidate optimisations if it matters: cache the static body as an offscreen bitmap per size and only draw legs per frame.
 - **Test 20 at 120 s is not flake-free — accepted by the user (2026-10-20); a lone test 20 failure is a known flake, rerun.** Over 2000 flies the escape time is median 10 s, p99 69 s, max 114 s, with a roughly exponential tail (×~8 less likely per extra 30 s). Estimated failure rate: ~1.5% per run, ~1 in 4 sweeps (seen on base 16). 180 s would be ~0.02% per run.

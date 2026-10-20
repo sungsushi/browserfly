@@ -36,7 +36,7 @@ var SCHEMA = {
   sprite: { type: "sprite", default: "auto" },
   touchTargetTimeout: num(5, 0, 30),
   debug: { type: "bool", default: false },
-  anchor: oneOf("viewport", ["viewport", "page"])
+  anchor: oneOf("page", ["viewport", "page"])
 };
 var DEFAULTS = Object.freeze(
   Object.fromEntries(Object.entries(SCHEMA).map(([k, s]) => [k, s.default]))
@@ -865,6 +865,7 @@ function create(options = {}) {
   let meta = true ? EMBEDDED_META : PLACEHOLDER_META;
   let sheet = null;
   let loadToken = 0;
+  let anchorSet = "anchor" in options;
   let destroyed = false;
   let paused = false;
   let onScreen = true;
@@ -888,7 +889,7 @@ function create(options = {}) {
     placed = e.bounds.w > 0 && e.bounds.h > 0;
   }
   function applyAnchor() {
-    if (params.anchor === "page" && overlay.host) warnOnce("anchor", 'anchor "page" is ignored with a container');
+    if (anchorSet && params.anchor === "page" && overlay.host) warnOnce("anchor", 'anchor "page" is ignored with a container');
     const page = params.anchor === "page" && !overlay.host;
     if (page === overlay.page) return;
     const dy = page ? window.scrollY : -window.scrollY;
@@ -1020,6 +1021,7 @@ function create(options = {}) {
         flies = [];
       }
       if (params.size !== prev.size) onResize();
+      if ("anchor" in changes) anchorSet = true;
       if (params.anchor !== prev.anchor) applyAnchor();
       if (params.sprite !== prev.sprite) loadSprite();
       spawnTo(params.count);
