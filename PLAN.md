@@ -31,6 +31,10 @@ Changes from the first draft, so the reasoning isn't lost:
 - Ranges added for every parameter. `angleDiff` sign convention, mode-transition timing, corner wall normals, the margin origin, tiny bounds, test 17 censoring and test 25 start phase are now specified.
 - The repository root is the current folder, not `fly-sprite/`.
 
+### Revision notes (rev 6, after M6 — user decision)
+
+Flies can be anchored to the page instead of the viewport, so they scroll with the content (§4.10, milestone M8). New option `anchor: 'viewport' | 'page'`, default `'viewport'` (today's behaviour). In page mode the canvas stays fixed and viewport-sized; fly positions are page coordinates and are drawn shifted by the scroll offset. A canvas as tall as the page was rejected: at 2× pixel density a 10,000 px page would need a ~200 MB backing store, beyond browser canvas limits (Safari's especially). Flies spawn inside the visible part of the page and then roam the whole page. Only simple vertical scrolling of the document is in scope. M8 is done before the optional M7.
+
 ### Revision notes (rev 5, after M6 — user decision)
 
 The user tuned the defaults in the demo: `size` 25, `stopProbability` 0.09, `rotDiffusion` 0.5, `attraction` 0.1, `attractionRange` 219, `touchTargetTimeout` 5 (§4.2). The statistical unit tests keep the engine values their criteria were designed at (`STATS_BASE` in `test/unit/helpers.js`), so every criterion is unchanged.
@@ -212,6 +216,7 @@ browserfly/
 | `reducedMotion` | `'static'` | `'static'` \| `'hide'` \| `'ignore'` | behaviour when `prefers-reduced-motion: reduce` |
 | `sprite` | `'auto'` | `'auto'` \| URL \| `'procedural'` | sprite source |
 | `touchTargetTimeout` | 5 | s, 0–30 | how long a tap acts as the cursor on touch devices (rev 5: was 4) |
+| `anchor` | `'viewport'` | `'viewport'` \| `'page'` | `'viewport'`: flies stay on screen while the page scrolls under them. `'page'`: flies live on the page and scroll with the content (§4.10). Viewport mode only; ignored with a warning when `container` is set (a container already scrolls with its content) |
 | `debug` | `false` | bool | draw the debug overlay |
 
 `params.js` defines these in a single schema table (default, type, range or allowed values) that also drives validation, data-attribute parsing and the README table. It must clamp out-of-range values (with `console.warn` once per key) and ignore unknown keys with a warning. Data attributes use kebab-case (for example `data-attraction`, `data-run-mean`) and are parsed as numbers or booleans where the schema type says so. Strings are kept for string or enum params. `data-fly` is the auto-init flag, not a param.
@@ -327,6 +332,21 @@ Swarm.debug() → { flies: FlyState[], cursor, bounds, fps }   // read-only snap
   - During swing, it moves forward with a slight lateral lift outward.
 - Line width scales with `size`, with a minimum of 1 px.
 - It must look acceptable on its own, since it is shipped as the fallback.
+
+### 4.10 Page anchoring (`anchor: 'page'`, rev 6)
+
+Applies in viewport mode only (`container` is `null`). With a container, `anchor: 'page'` is ignored and a single `console.warn` is emitted, because the canvas is already part of the content.
+
+- **Canvas.** Unchanged: one fixed, viewport-sized canvas (backing store = viewport × DPR). Never size a canvas to the page.
+- **Coordinates.** Fly positions, the cursor and `bounds` are page coordinates: origin at the top-left of the document, y down. `bounds = { w: viewport width, h: max(document scroll height, viewport height) }`. Horizontal scrolling is out of scope: the page width is the viewport width and `scrollX` is ignored.
+- **Drawing.** Each frame, translate by `−scrollY` (read once per frame) and draw only the flies whose position is within one body length of the visible band `[scrollY, scrollY + viewport height]`. The debug overlay is drawn in the same translated frame.
+- **Simulation.** Off-screen flies keep being simulated (the engine is unchanged; only `bounds` is larger). The loop still pauses on `document.hidden`.
+- **Spawning.** New flies (at creation, on `set({ count })` increases, and on a new `seed`) spawn uniformly inside the visible band, inset by half a body length, so a visitor who never scrolls still sees them. Afterwards they roam the whole page, walls at the page edges.
+- **Cursor.** A mouse cursor is its current client position plus the current `scrollY`, computed every frame, so scrolling with the wheel under a still pointer moves the cursor over the content. A touch or pen tap is converted to page coordinates at the moment of the tap and stays there for `touchTargetTimeout` seconds.
+- **Page size changes.** Observe the document's size (`ResizeObserver` on `document.documentElement`, plus `resize`). When `bounds` change, clamp the flies into the new bounds within one frame, as in §4.7.
+- **Scrolling without animation.** When the loop is not running (paused, or reduced motion `'static'`), listen for `scroll` (passive) and redraw, so static flies stay attached to the content. With `'hide'`, draw nothing as before.
+- **Live switching.** `set({ anchor })` converts every fly between viewport and page coordinates by adding or subtracting the current `scrollY`, so nothing jumps on screen at the moment of switching.
+- **`debug()`** also returns `scroll: { y }` and `anchor`; flies, cursor and bounds are in page coordinates in page mode.
 
 ---
 
@@ -536,6 +556,32 @@ Proceed only if option (a) was chosen.
 - A fresh `index.html` with one script tag works when served by `npx serve` from a subdirectory.
 - All tests are green in CI.
 - Sizes are within budget: `fly.min.js` ≤ 8 KB gz, `fly.inline.min.js` ≤ 45 KB gz.
+
+### M8 — Page-anchored flies (rev 6; done before M7)
+
+**Tasks**
+- Add the `anchor` parameter (§4.2) and implement §4.10 in `overlay.js`, `input.js` and `index.js`. The engine and animator do not change.
+- Demo: an `anchor` select in the panel, and enough page content below the fold to scroll through.
+- README: document `anchor` with an example (`data-anchor="page"`), and the note that only the document's vertical scrolling is supported.
+- Keep `fly.min.js` within 8 KB gz. It currently has ~30 B of headroom, so make room first, for example by stripping the debug overlay's text labels (or the whole overlay) from the minified builds, or by shortening warning texts. If the budget cannot be met without removing user-facing features, stop and ask the user (raise the budget, or which feature to drop).
+
+**Unit tests**
+- Params: `anchor` accepts `'viewport'` and `'page'`; anything else is ignored with a warning; `data-anchor="page"` parses.
+
+**E2E tests** (`test/fixtures/long-page.html`: about 4000 px of content; all three engines)
+1. **Spawn in view.** Scroll to y = 1500, then create a page-anchored swarm of 10. Every fly's page y is inside `[1500, 1500 + innerHeight]`, inset by half a body length.
+2. **Anchoring.** Pause the swarm. Record a fly's page position and confirm the canvas is opaque at its screen position. Scroll down by 300 px. The fly's page position is unchanged, and the canvas is now opaque at the screen position 300 px higher (and transparent at the old one, unless another fly is there).
+3. **Viewport mode is unchanged.** With the default `anchor`, the same scroll leaves the fly's screen position unchanged.
+4. **Off-screen flies keep walking.** Scroll a fly out of view; its page position keeps changing; scroll back and it is drawn where `debug()` says it is.
+5. **Cursor.** Move the mouse to client (x, y) at scroll offset s: `debug().cursor` is (x, y + s). Scroll by d with the mouse still: the cursor becomes (x, y + s + d). In touch emulation, a tap followed by a scroll keeps the cursor at the tap's page position.
+6. **Bounds follow the page.** Append 1000 px of content: `bounds.h` grows by 1000 within one frame of the layout change. Remove 3000 px: every fly is inside the new inset bounds within one frame.
+7. **No giant canvas.** In page mode on the long page, `canvas.height === round(innerHeight × DPR)`.
+8. **Static reduced motion.** Emulate `prefers-reduced-motion: reduce` with `anchor: 'page'`: positions never change, and after a scroll the flies are drawn at their new screen positions.
+9. **Live switching.** `set({ anchor: 'page' })` and back at a non-zero scroll offset: no fly's screen position moves by more than 1 px at the switch.
+10. **Container mode.** `container` + `anchor: 'page'` emits exactly one warning and behaves exactly like container mode.
+11. **Performance (soft, warn only).** 20 page-anchored flies on the long page: mean script time per frame under 2 ms in Chromium and WebKit; report Firefox.
+
+**Acceptance:** all tests above and all existing unit and e2e tests pass; bundle sizes within budget; README and the generated option table updated. 🚦 **Gate:** ask the user to try `anchor: 'page'` in the demo and on their own page before the milestone is closed.
 
 ### M7 — Optional polish (only if the user asks)
 

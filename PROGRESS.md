@@ -1,6 +1,6 @@
 # Progress
 
-**Current milestone:** M6 — Packaging, docs, GitHub Pages check — ✅ done locally (committed). CI not yet run: the repo has no remote. M7 (optional polish) only if asked.
+**Current milestone:** M6 done; rev 5 defaults and grey-blue wings committed. Next: **M8 — Page-anchored flies** (planned in PLAN.md rev 6, §4.10; not started, waiting for go-ahead). M7 (optional polish) only if asked.
 
 ## Done
 - **M0** — scaffolding (git, package.json scripts, esbuild/vitest/playwright/eslint configs, serve + sweep scripts).
@@ -48,6 +48,8 @@
 - **Rev 5 defaults (2026-10-20, user's tuning):** `size` 25, `stopProbability` 0.09, `rotDiffusion` 0.5, `attraction` 0.1, `attractionRange` 219, `touchTargetTimeout` 5. PLAN §4.2 and the README table updated. Unit tests pin the statistical baseline (`STATS_BASE`), so the criteria and the 20/20 sweep still apply unchanged; e2e test 4 pins `size: 96`. `npm test` 89/89, `npm run test:e2e` 72/72.
 
 - **Grey-blue wings (2026-10-20, user's choice):** six wing colours prototyped (`pipeline/out/wings/`, not committed); variant C (RGB 0.60 0.66 0.78, alpha 0.12) is now `WING_RGBA` in `render_walk.py`, with a new `--wing-rgba` option on `render_walk.py` / `build_all.py`. Sheet rebuilt into `dist/` (PNG 32.1 KB, WebP 27.6 KB; same stride and frames) and bundles rebuilt (`fly.inline.min.js` 37.2 KB gz). Tests: pipeline 19/19, `npm test` 89/89, `npm run test:e2e` 72/72.
+
+- **PLAN rev 6 (2026-10-20):** page-anchored flies planned as M8 (`anchor: 'viewport' | 'page'`, fixed viewport-sized canvas with page coordinates, spawn in the visible band). Not implemented yet.
 
 ## Open issues
 - **CI not verified on GitHub:** no git remote is configured, so the workflow has only been validated (YAML) and its steps run locally.
