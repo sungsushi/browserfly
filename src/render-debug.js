@@ -13,8 +13,10 @@ export function drawDebug(ctx, flies, params, cursor) {
   const size = params.size;
   ctx.save();
   ctx.lineWidth = 1;
-  ctx.font = '11px ui-monospace, Menlo, monospace';
-  ctx.textBaseline = 'top';
+  if (__DEBUG__) {
+    ctx.font = '11px ui-monospace, Menlo, monospace';
+    ctx.textBaseline = 'top';
+  }
 
   if (cursor) {
     ctx.strokeStyle = 'rgba(220, 40, 120, 0.9)';
@@ -51,16 +53,19 @@ export function drawDebug(ctx, flies, params, cursor) {
       ctx.stroke();
       ctx.setLineDash([]);
     }
-    let label = f.mode;
-    if (f.mode === 'stop') label += ` ${Math.max(0, f.stopTimer).toFixed(1)}s`;
-    if (f.lingerTimer > 0) label += ` linger ${f.lingerTimer.toFixed(1)}`;
-    if (!f.arrivalArmed) label += ' (disarmed)';
-    const tx = f.x + size * 0.6;
-    const ty = f.y - size * 0.6;
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-    ctx.fillRect(tx - 2, ty - 1, ctx.measureText(label).width + 4, 14);
-    ctx.fillStyle = '#111';
-    ctx.fillText(label, tx, ty);
+    // State labels only in debug builds (fly.js); the minified builds keep the vectors.
+    if (__DEBUG__) {
+      let label = f.mode;
+      if (f.mode === 'stop') label += ` ${Math.max(0, f.stopTimer).toFixed(1)}s`;
+      if (f.lingerTimer > 0) label += ` linger ${f.lingerTimer.toFixed(1)}`;
+      if (!f.arrivalArmed) label += ' (disarmed)';
+      const tx = f.x + size * 0.6;
+      const ty = f.y - size * 0.6;
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+      ctx.fillRect(tx - 2, ty - 1, ctx.measureText(label).width + 4, 14);
+      ctx.fillStyle = '#111';
+      ctx.fillText(label, tx, ty);
+    }
   }
   ctx.restore();
 }

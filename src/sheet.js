@@ -2,35 +2,36 @@
 
 /**
  * Checks sheet metadata (PLAN.md §3). With `image` ({ width, height }) it also checks that every
- * clip fits the image. Returns a list of problems; empty means valid.
+ * clip fits the image. Returns a list of problems; empty means valid. The messages exist only in
+ * debug builds (the loader never shows them); minified builds record `false` per problem.
  */
 export function validateSheetMeta(meta, image = null) {
   const errors = [];
   const posInt = (v) => Number.isInteger(v) && v > 0;
-  if (!meta || typeof meta !== 'object') return ['metadata is not an object'];
-  if (meta.version !== 1) errors.push(`unsupported version ${meta.version}`);
+  if (!meta || typeof meta !== 'object') return [__DEBUG__ && 'metadata is not an object'];
+  if (meta.version !== 1) errors.push(__DEBUG__ && `unsupported version ${meta.version}`);
   for (const k of ['frameWidth', 'frameHeight', 'bodyLengthPx']) {
-    if (!posInt(meta[k])) errors.push(`${k} must be a positive integer`);
+    if (!posInt(meta[k])) errors.push(__DEBUG__ && `${k} must be a positive integer`);
   }
   const a = meta.anchor;
-  if (!Array.isArray(a) || a.length !== 2 || !a.every(Number.isFinite)) errors.push('anchor must be [x, y]');
+  if (!Array.isArray(a) || a.length !== 2 || !a.every(Number.isFinite)) errors.push(__DEBUG__ && 'anchor must be [x, y]');
   const clips = meta.clips;
-  if (!clips || typeof clips !== 'object') return errors.concat('clips missing');
+  if (!clips || typeof clips !== 'object') return errors.concat(__DEBUG__ && 'clips missing');
   for (const name of ['walk', 'idle']) {
-    if (!clips[name]) errors.push(`clip "${name}" missing`);
+    if (!clips[name]) errors.push(__DEBUG__ && `clip "${name}" missing`);
   }
   for (const [name, c] of Object.entries(clips)) {
-    if (!Number.isInteger(c.row) || c.row < 0) errors.push(`clip "${name}": row must be an integer ≥ 0`);
-    if (!posInt(c.frames)) errors.push(`clip "${name}": frames must be a positive integer`);
+    if (!Number.isInteger(c.row) || c.row < 0) errors.push(__DEBUG__ && `clip "${name}": row must be an integer ≥ 0`);
+    if (!posInt(c.frames)) errors.push(__DEBUG__ && `clip "${name}": frames must be a positive integer`);
     if (image && posInt(c.frames) && posInt(meta.frameWidth) && c.frames * meta.frameWidth > image.width) {
-      errors.push(`clip "${name}": ${c.frames} frames of ${meta.frameWidth} px exceed the image width ${image.width}`);
+      errors.push(__DEBUG__ && `clip "${name}": ${c.frames} frames of ${meta.frameWidth} px exceed the image width ${image.width}`);
     }
     if (image && Number.isInteger(c.row) && posInt(meta.frameHeight) && (c.row + 1) * meta.frameHeight > image.height) {
-      errors.push(`clip "${name}": row ${c.row} is outside the image height ${image.height}`);
+      errors.push(__DEBUG__ && `clip "${name}": row ${c.row} is outside the image height ${image.height}`);
     }
   }
   if (clips.walk && !(Number.isFinite(clips.walk.strideBL) && clips.walk.strideBL > 0)) {
-    errors.push('clip "walk": strideBL must be a positive number');
+    errors.push(__DEBUG__ && 'clip "walk": strideBL must be a positive number');
   }
   return errors;
 }

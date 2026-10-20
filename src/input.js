@@ -3,16 +3,16 @@
 // mouse is handled. Listeners are passive; never preventDefault, never capture.
 
 /**
- * Creates a pointer tracker. `cursor(now, touchTimeoutS)` returns {x, y} in client
- * coordinates or null. A mouse cursor lasts until the pointer leaves the page; a touch or
- * pen tap lasts `touchTimeoutS` seconds.
+ * Creates a pointer tracker. `cursor(now, touchTimeoutS)` returns { x, y, mouse, sy } in client
+ * coordinates (sy: the page's scrollY when the event happened) or null. A mouse cursor lasts
+ * until the pointer leaves the page; a touch or pen tap lasts `touchTimeoutS` seconds.
  */
 export function createInput() {
-  let state = null; // { x, y, mouse, time }
+  let state = null; // { x, y, mouse, time, sy }
   const opts = { passive: true };
 
   const onPointer = (e) => {
-    state = { x: e.clientX, y: e.clientY, mouse: e.pointerType === 'mouse', time: performance.now() };
+    state = { x: e.clientX, y: e.clientY, mouse: e.pointerType === 'mouse', time: performance.now(), sy: window.scrollY };
   };
   // Only a mouse cursor leaves with the pointer; a tap keeps its timeout even if the
   // browser fires compatibility mouse events.
@@ -40,7 +40,7 @@ export function createInput() {
         state = null;
         return null;
       }
-      return { x: state.x, y: state.y };
+      return { x: state.x, y: state.y, mouse: state.mouse, sy: state.sy };
     },
     destroy() {
       window.removeEventListener('pointermove', onPointer, opts);

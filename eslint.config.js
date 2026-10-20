@@ -8,7 +8,7 @@ export default [
     languageOptions: {
       ecmaVersion: 2020,
       sourceType: 'module',
-      globals: { ...globals.browser, __DEBUG__: 'readonly', __INLINE_SHEET__: 'readonly', __SHEET_META__: 'readonly' },
+      globals: { ...globals.browser, __DEBUG__: 'readonly', __INLINE_SHEET__: 'readonly', __SHEET_META__: 'readonly', __HAS_SHEET__: 'readonly' },
     },
   },
   {

@@ -1,6 +1,6 @@
 # Progress
 
-**Current milestone:** M6 done; rev 5 defaults and grey-blue wings committed. Next: **M8 — Page-anchored flies** (planned in PLAN.md rev 6, §4.10; not started, waiting for go-ahead). M7 (optional polish) only if asked.
+**Current milestone:** M8 — Page-anchored flies — ✅ tests pass (committed). 🚦 **Gate:** waiting for the user to try `anchor: 'page'` in the demo and on their own page. M7 (optional polish) only if asked.
 
 ## Done
 - **M0** — scaffolding (git, package.json scripts, esbuild/vitest/playwright/eslint configs, serve + sweep scripts).
@@ -51,12 +51,16 @@
 
 - **PLAN rev 6 (2026-10-20):** page-anchored flies planned as M8 (`anchor: 'viewport' | 'page'`, fixed viewport-sized canvas with page coordinates, spawn in the visible band). Not implemented yet.
 
+- **M8** — `anchor: 'viewport' | 'page'` (§4.10): fixed viewport-sized canvas, page coordinates, culling to the visible band, spawning in the visible band, mouse cursor follows scroll / taps stay on the page, page-size observation (html + body), redraw on scroll when static or paused, live switching without jumps, container + page warns once. `debug()` adds `anchor` and `scroll`. Demo: anchor select and more content. README section.
+  - Budget: debug-overlay text labels and sheet-validation messages are now debug-build only; the unused placeholder metadata is dropped from bundles with a sheet (`__HAS_SHEET__`). `fly.min.js` 7.95 KB gz (8,145 B of 8,192; 47 B headroom), `fly.inline.min.js` 37.2 KB gz.
+  - Tests: `npm test` 90/90 (new anchor params test); `test/e2e/anchor.spec.js` (tests 1–11 + touch) 36/36, ×3 repeats 108/108; full `npm run test:e2e` 108/108. Perf with 20 page-anchored flies: Chromium 0.14, WebKit 0.33, Firefox 1.3 ms/frame.
+
 ## Open issues
 - **CI not verified on GitHub:** no git remote is configured, so the workflow has only been validated (YAML) and its steps run locally.
 - **No licence for this repository's own code** (README says so). FlyGym/NeuroMechFly are Apache-2.0 and credited.
 - Sheet budget: met at 64 colours with ~3 KB WebP headroom. Re-rendering at other settings may need 48 colours (18 KB) or fewer frames.
 - Real speed in the chosen stride is 6.9 BL/s with strideBL 0.64; at the rev 4 default of 1.2 BL/s the legs step at ~1.9 Hz (≈ 32 display frames per stride).
-- **`fly.min.js` has ~30 B of headroom under 8 KB gz.** Any further runtime addition must be paid for (candidates: shorter warning texts, dropping the debug overlay's labels in min builds).
+- **`fly.min.js` has ~47 B of headroom under 8 KB gz.** The easy trims are used up (debug labels and validation messages are debug-only). Further runtime features (e.g. click-to-fly-away) will need the budget raised or a feature trade — ask the user.
 - E2E filters Chromium's "Failed to load resource" console errors in the 404 test: they come from the network layer, not script.
 - Firefox exceeds the 2 ms soft perf budget with 20 flies (headless Firefox canvas is slower; Chromium/WebKit are ~8× under). Candidate optimisations if it matters: cache the static body as an offscreen bitmap per size and only draw legs per frame.
 - **Test 20 at 120 s is not flake-free — accepted by the user (2026-10-20); a lone test 20 failure is a known flake, rerun.** Over 2000 flies the escape time is median 10 s, p99 69 s, max 114 s, with a roughly exponential tail (×~8 less likely per extra 30 s). Estimated failure rate: ~1.5% per run, ~1 in 4 sweeps (seen on base 16). 180 s would be ~0.02% per run.

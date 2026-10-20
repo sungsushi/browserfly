@@ -28,4 +28,5 @@ export const PARAM_DOCS = {
   sprite: "'auto', 'procedural' or a sprite sheet URL",
   touchTargetTimeout: 'how long a tap acts as the cursor on touch devices (s)',
   debug: 'draw the debug overlay',
+  anchor: "'viewport': flies stay on screen while the page scrolls; 'page': flies live on the page and scroll with it (viewport mode only)",
 };

@@ -58,6 +58,15 @@ describe('9. params', () => {
     expect(resolveParams({ speed: 4 }, p).attraction).toBe(0.8);
   });
 
+  it('anchor: viewport (default) or page; anything else is dropped with a warning (M8)', () => {
+    expect(DEFAULTS.anchor).toBe('viewport');
+    expect(validateParams({ anchor: 'page' })).toEqual({ anchor: 'page' });
+    expect(validateParams({ anchor: 'viewport' })).toEqual({ anchor: 'viewport' });
+    expect(validateParams({ anchor: 'document' })).toEqual({});
+    expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('anchor'));
+    expect(parseDataset({ anchor: 'page' })).toEqual({ anchor: 'page' });
+  });
+
   it('parses data attributes', () => {
     expect(parseDataset({ fly: '', attraction: '0.4', debug: 'true' })).toEqual({ attraction: 0.4, debug: true });
     expect(parseDataset({ 'run-mean': '3' }).runMean).toBe(3);

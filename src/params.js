@@ -33,6 +33,7 @@ export const SCHEMA = {
   sprite: { type: 'sprite', default: 'auto' },
   touchTargetTimeout: num(5, 0, 30),
   debug: { type: 'bool', default: false },
+  anchor: oneOf('viewport', ['viewport', 'page']),
 };
 
 export const DEFAULTS = Object.freeze(

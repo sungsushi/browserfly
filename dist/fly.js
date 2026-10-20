@@ -63,7 +63,8 @@ var Fly = (() => {
     reducedMotion: oneOf("static", ["static", "hide", "ignore"]),
     sprite: { type: "sprite", default: "auto" },
     touchTargetTimeout: num(5, 0, 30),
-    debug: { type: "bool", default: false }
+    debug: { type: "bool", default: false },
+    anchor: oneOf("viewport", ["viewport", "page"])
   };
   var DEFAULTS = Object.freeze(
     Object.fromEntries(Object.entries(SCHEMA).map(([k, s]) => [k, s.default]))
@@ -448,13 +449,6 @@ var Fly = (() => {
 
   // src/animator.js
   var TWO_PI3 = 2 * Math.PI;
-  var PLACEHOLDER_META = Object.freeze({
-    version: 1,
-    clips: Object.freeze({
-      walk: Object.freeze({ row: 0, frames: 12, strideBL: 0.42, loop: true }),
-      idle: Object.freeze({ row: 1, frames: 2 })
-    })
-  });
   var IDLE_MIN = 0.5;
   var IDLE_MAX = 2;
   function frameAt(phase, frames) {
@@ -495,7 +489,7 @@ var Fly = (() => {
     let state = null;
     const opts = { passive: true };
     const onPointer = (e) => {
-      state = { x: e.clientX, y: e.clientY, mouse: e.pointerType === "mouse", time: performance.now() };
+      state = { x: e.clientX, y: e.clientY, mouse: e.pointerType === "mouse", time: performance.now(), sy: window.scrollY };
     };
     const clearMouse = () => {
       if (state && state.mouse) state = null;
@@ -519,7 +513,7 @@ var Fly = (() => {
           state = null;
           return null;
         }
-        return { x: state.x, y: state.y };
+        return { x: state.x, y: state.y, mouse: state.mouse, sy: state.sy };
       },
       destroy() {
         window.removeEventListener("pointermove", onPointer, opts);
@@ -563,7 +557,11 @@ var Fly = (() => {
       ctx,
       host,
       dpr: 1,
+      page: false,
+      view: { w: 0, h: 0 },
+      // the canvas's CSS size
       bounds: { w: 0, h: 0 },
+      // the walking area: the view, or the page in page mode
       /** Re-reads the CSS size and DPR and resizes the backing store. */
       resize() {
         const dpr = window.devicePixelRatio || 1;
@@ -574,12 +572,17 @@ var Fly = (() => {
         if (canvas.width !== bw) canvas.width = bw;
         if (canvas.height !== bh) canvas.height = bh;
         overlay.dpr = dpr;
-        overlay.bounds = { w, h };
+        overlay.view = { w, h };
+        overlay.bounds = overlay.page ? { w, h: Math.max(h, document.documentElement.scrollHeight) } : { w, h };
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       },
-      /** Converts client coordinates to container coordinates. */
+      /**
+       * Converts a pointer (client coordinates) to container or page coordinates. In page mode a
+       * mouse follows the current scroll; a tap stays where it landed on the page.
+       */
       toLocal(p) {
         if (!p) return null;
+        if (overlay.page) return { x: p.x, y: p.y + (p.mouse ? window.scrollY : p.sy) };
         if (!host) return { x: p.x, y: p.y };
         const r = canvas.getBoundingClientRect();
         return { x: p.x - r.left, y: p.y - r.top };
@@ -607,6 +610,7 @@ var Fly = (() => {
     if (typeof ResizeObserver === "function") {
       ro = new ResizeObserver(handleResize);
       ro.observe(canvas);
+      if (!host) [document.documentElement, document.body].forEach((el) => ro.observe(el));
     }
     window.addEventListener("resize", handleResize);
     let io = null;
@@ -734,8 +738,10 @@ var Fly = (() => {
     const size = params.size;
     ctx.save();
     ctx.lineWidth = 1;
-    ctx.font = "11px ui-monospace, Menlo, monospace";
-    ctx.textBaseline = "top";
+    if (true) {
+      ctx.font = "11px ui-monospace, Menlo, monospace";
+      ctx.textBaseline = "top";
+    }
     if (cursor) {
       ctx.strokeStyle = "rgba(220, 40, 120, 0.9)";
       ctx.beginPath();
@@ -770,16 +776,18 @@ var Fly = (() => {
         ctx.stroke();
         ctx.setLineDash([]);
       }
-      let label = f.mode;
-      if (f.mode === "stop") label += ` ${Math.max(0, f.stopTimer).toFixed(1)}s`;
-      if (f.lingerTimer > 0) label += ` linger ${f.lingerTimer.toFixed(1)}`;
-      if (!f.arrivalArmed) label += " (disarmed)";
-      const tx = f.x + size * 0.6;
-      const ty = f.y - size * 0.6;
-      ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
-      ctx.fillRect(tx - 2, ty - 1, ctx.measureText(label).width + 4, 14);
-      ctx.fillStyle = "#111";
-      ctx.fillText(label, tx, ty);
+      if (true) {
+        let label = f.mode;
+        if (f.mode === "stop") label += ` ${Math.max(0, f.stopTimer).toFixed(1)}s`;
+        if (f.lingerTimer > 0) label += ` linger ${f.lingerTimer.toFixed(1)}`;
+        if (!f.arrivalArmed) label += " (disarmed)";
+        const tx = f.x + size * 0.6;
+        const ty = f.y - size * 0.6;
+        ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+        ctx.fillRect(tx - 2, ty - 1, ctx.measureText(label).width + 4, 14);
+        ctx.fillStyle = "#111";
+        ctx.fillText(label, tx, ty);
+      }
     }
     ctx.restore();
   }
@@ -895,7 +903,8 @@ var Fly = (() => {
     reducedMotion: "behaviour when prefers-reduced-motion: reduce",
     sprite: "'auto', 'procedural' or a sprite sheet URL",
     touchTargetTimeout: "how long a tap acts as the cursor on touch devices (s)",
-    debug: "draw the debug overlay"
+    debug: "draw the debug overlay",
+    anchor: "'viewport': flies stay on screen while the page scrolls; 'page': flies live on the page and scroll with it (viewport mode only)"
   };
 
   // src/index.js
@@ -918,7 +927,7 @@ var Fly = (() => {
     let flies = [];
     let overlay = null;
     const input = createInput();
-    let meta = EMBEDDED_META || PLACEHOLDER_META;
+    let meta = true ? EMBEDDED_META : PLACEHOLDER_META;
     let sheet = null;
     let loadToken = 0;
     let destroyed = false;
@@ -932,26 +941,48 @@ var Fly = (() => {
     const env = () => ({ cursor: cursor(), bounds: overlay.bounds, sizePx: params.size });
     const cursor = () => overlay.toLocal(input.cursor(performance.now(), params.touchTargetTimeout));
     let placed = false;
+    function spawnOne(e) {
+      if (!overlay.page) return spawnFly(params, e, rng);
+      const f = spawnFly(params, { ...e, bounds: overlay.view }, rng);
+      return { ...f, y: f.y + window.scrollY };
+    }
     function spawnTo(n) {
       const e = env();
-      while (flies.length < n) flies.push(spawnFly(params, e, rng));
+      while (flies.length < n) flies.push(spawnOne(e));
       flies.length = n;
       placed = e.bounds.w > 0 && e.bounds.h > 0;
+    }
+    function applyAnchor() {
+      if (params.anchor === "page" && overlay.host) warnOnce("anchor", 'anchor "page" is ignored with a container');
+      const page = params.anchor === "page" && !overlay.host;
+      if (page === overlay.page) return;
+      const dy = page ? window.scrollY : -window.scrollY;
+      flies = flies.map((f) => ({ ...f, y: f.y + dy }));
+      overlay.page = page;
+      overlay.resize();
+      onResize();
     }
     function render() {
       if (overlay.dpr !== (window.devicePixelRatio || 1)) overlay.resize();
       overlay.clear();
       if (motion() === "hide") return;
       const { ctx } = overlay;
+      let shown = flies;
+      if (overlay.page) {
+        const sy = window.scrollY;
+        const m = params.size;
+        ctx.setTransform(overlay.dpr, 0, 0, overlay.dpr, 0, -sy * overlay.dpr);
+        shown = flies.filter((f) => f.y > sy - m && f.y < sy + overlay.view.h + m);
+      }
       if (sheet) {
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = "high";
-        for (const f of flies) drawSprite(ctx, sheet, f, params.size);
+        for (const f of shown) drawSprite(ctx, sheet, f, params.size);
       } else {
         const strideBL = meta.clips.walk.strideBL;
-        for (const f of flies) drawProcedural(ctx, f, params.size, strideBL);
+        for (const f of shown) drawProcedural(ctx, f, params.size, strideBL);
       }
-      if (params.debug) drawDebug(ctx, flies, params, cursor());
+      if (params.debug) drawDebug(ctx, shown, params, cursor());
     }
     function update(dt) {
       const e = env();
@@ -1001,6 +1032,9 @@ var Fly = (() => {
       flies = flies.map((f) => clampToBounds(f, e));
       render();
     }
+    function onScroll() {
+      if (overlay.page && !running()) render();
+    }
     function onVisible(visible) {
       onScreen = visible;
       sync();
@@ -1029,8 +1063,10 @@ var Fly = (() => {
       if (overlay) overlay.destroy();
       overlay = createOverlay({ container: params.container, zIndex: params.zIndex, onResize, onVisible });
       onScreen = true;
+      applyAnchor();
     }
     document.addEventListener("visibilitychange", sync);
+    window.addEventListener("scroll", onScroll, { passive: true });
     if (mql) mql.addEventListener("change", sync);
     buildOverlay();
     spawnTo(params.count);
@@ -1049,6 +1085,7 @@ var Fly = (() => {
           flies = [];
         }
         if (params.size !== prev.size) onResize();
+        if (params.anchor !== prev.anchor) applyAnchor();
         if (params.sprite !== prev.sprite) loadSprite();
         spawnTo(params.count);
         sync();
@@ -1070,6 +1107,7 @@ var Fly = (() => {
         if (rafId) cancelAnimationFrame(rafId);
         rafId = 0;
         document.removeEventListener("visibilitychange", sync);
+        window.removeEventListener("scroll", onScroll);
         if (mql) mql.removeEventListener("change", sync);
         input.destroy();
         overlay.destroy();
@@ -1082,6 +1120,8 @@ var Fly = (() => {
           flies: flies.map((f) => ({ ...f })),
           cursor: destroyed ? null : cursor(),
           bounds: { ...overlay.bounds },
+          anchor: overlay.page ? "page" : "viewport",
+          scroll: { y: overlay.page ? window.scrollY : 0 },
           fps,
           renderer: sheet ? "sprite" : "procedural",
           sheetUrl: sheet ? sheet.url.startsWith("data:") ? "inline" : sheet.url : null,

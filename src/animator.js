@@ -4,11 +4,11 @@ import { angleDiff } from './angles.js';
 const TWO_PI = 2 * Math.PI;
 
 /** Placeholder sheet metadata used until the real sprite sheet exists (M4). */
-export const PLACEHOLDER_META = Object.freeze({
+export const PLACEHOLDER_META = /* @__PURE__ */ Object.freeze({
   version: 1,
-  clips: Object.freeze({
-    walk: Object.freeze({ row: 0, frames: 12, strideBL: 0.42, loop: true }),
-    idle: Object.freeze({ row: 1, frames: 2 }),
+  clips: /* @__PURE__ */ Object.freeze({
+    walk: /* @__PURE__ */ Object.freeze({ row: 0, frames: 12, strideBL: 0.42, loop: true }),
+    idle: /* @__PURE__ */ Object.freeze({ row: 1, frames: 2 }),
   }),
 });
 

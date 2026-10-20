@@ -28,6 +28,7 @@ function defines(debug, inlineSheet = null) {
     __DEBUG__: String(debug),
     __INLINE_SHEET__: JSON.stringify(inlineSheet),
     __SHEET_META__: JSON.stringify(sheetMeta),
+    __HAS_SHEET__: String(sheetMeta !== null),
   };
 }
 

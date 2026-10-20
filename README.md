@@ -48,6 +48,21 @@ element (which is made `position: relative` if it is static):
 Fly.create({ container: document.querySelector('#hero'), count: 1 });
 ```
 
+### Flies that scroll with the page
+
+By default the flies stay on screen while the page scrolls under them. With `anchor: 'page'` they
+live on the page instead: they keep their place on the content and scroll away with it, and the
+ones you've scrolled past keep walking out of sight. New flies appear in the part of the page that's
+visible, then roam the whole page.
+
+```html
+<script src="fly.inline.min.js" data-fly data-anchor="page" defer></script>
+```
+
+Only ordinary vertical scrolling of the document is supported (not horizontal scrolling or
+scrolling inside other elements). The canvas stays the size of the window, so long pages cost
+nothing extra. With a `container`, `anchor` is ignored: a container already scrolls with its content.
+
 `fly.esm.js` is an ES module build exporting `create`, `version`, `instances` and `schema`. A
 module has no `currentScript`, so pass `sprite` as a URL (e.g.
 `new URL('fly-sheet.webp', import.meta.url).href`), or the flies are drawn procedurally.
@@ -56,12 +71,12 @@ module has no `currentScript`, so pass `sprite` as a URL (e.g.
 
 | File | Size (gzip) | Use |
 |---|---|---|
-| `fly.min.js` | 7.97 KB | the library, minified; loads the sprite sheet next to it |
+| `fly.min.js` | 7.95 KB | the library, minified; loads the sprite sheet next to it |
 | `fly-sheet.webp` | 27.6 KB (not gzipped) | the sprite sheet |
 | `fly-sheet.png` | 32.1 KB (not gzipped) | fallback if WebP can't be decoded |
 | `fly.inline.min.js` | 37.2 KB | the library with the sheet inlined: the only file you need |
-| `fly.js` | 11.6 KB | readable debug build (extra checks; used by the demo) |
-| `fly.esm.js` | 10.5 KB | ES module build |
+| `fly.js` | 12.2 KB | readable debug build (extra checks, debug-overlay labels; used by the demo) |
+| `fly.esm.js` | 10.8 KB | ES module build |
 | `fly-sheet.json` | 0.6 KB | sheet metadata (already embedded in every bundle) |
 
 ## Options
@@ -101,6 +116,7 @@ length (`size`).
 | `sprite` | `data-sprite` | `'auto'` | `'auto'`, `'procedural'` or a URL | 'auto', 'procedural' or a sprite sheet URL |
 | `touchTargetTimeout` | `data-touch-target-timeout` | `5` | 0 – 30 | how long a tap acts as the cursor on touch devices (s) |
 | `debug` | `data-debug` | `false` | `true`, `false` | draw the debug overlay |
+| `anchor` | `data-anchor` | `'viewport'` | `'viewport'`, `'page'` | 'viewport': flies stay on screen while the page scrolls; 'page': flies live on the page and scroll with it (viewport mode only) |
 <!-- params:end -->
 
 The default walking speed is slow motion on purpose: a real fly walks about 6 body lengths per
@@ -118,7 +134,7 @@ Fly.schema                      // the option schema (defaults, ranges)
 swarm.set(partialOptions)       // live update; count changes add or remove flies; a new seed restarts
 swarm.pause() / swarm.resume()
 swarm.destroy()                 // removes the canvas, listeners and observers; safe to call twice
-swarm.debug() → { flies, cursor, bounds, fps, renderer, sheetUrl, params, running }   // read-only snapshot
+swarm.debug() → { flies, cursor, bounds, anchor, scroll, fps, renderer, sheetUrl, params, running }   // read-only snapshot
 ```
 
 ## How it behaves
@@ -164,8 +180,10 @@ npm run docs                  # regenerate the option table above from src/param
 npm run serve                 # http://localhost:8080/demo/ — demo with a live parameter panel
 ```
 
-The demo page (`demo/index.html`) has sliders for every option, a renderer toggle, a seed box,
-a debug overlay and a box listing the options you've changed from the defaults.
+The demo page (`demo/index.html`) has sliders for every option, renderer and anchor toggles, a seed
+box, a debug overlay and a box listing the options you've changed from the defaults. The debug
+overlay's per-fly text labels are only drawn by the debug build (`fly.js`); the minified builds draw
+the overlay without them.
 [PLAN.md](PLAN.md) is the full specification and [PROGRESS.md](PROGRESS.md) the project log.
 
 ## Regenerating the sprite sheet

@@ -1,4 +1,4 @@
-// Public API, lifecycle and auto-init (PLAN.md §4.7–4.8).
+// Public API, lifecycle and auto-init (PLAN.md §4.7–4.8, page anchoring §4.10).
 import { version as pkgVersion } from '../package.json';
 import { SCHEMA, resolveParams, validateParams, parseDataset, warnOnce } from './params.js';
 import { createRng } from './rng.js';
@@ -46,7 +46,8 @@ export function create(options = {}) {
   let flies = [];
   let overlay = null;
   const input = createInput();
-  let meta = EMBEDDED_META || PLACEHOLDER_META;
+  // A build-time constant, so bundles with a sheet drop the placeholder metadata entirely.
+  let meta = __HAS_SHEET__ ? EMBEDDED_META : PLACEHOLDER_META;
   let sheet = null; // { img, meta, url } once loaded
   let loadToken = 0;
 
@@ -70,11 +71,31 @@ export function create(options = {}) {
   // where they would all start at the same point; they are re-spawned on the first real size.
   let placed = false;
 
+  // Page mode spawns inside the visible band of the page; afterwards flies roam the whole page.
+  function spawnOne(e) {
+    if (!overlay.page) return spawnFly(params, e, rng);
+    const f = spawnFly(params, { ...e, bounds: overlay.view }, rng);
+    return { ...f, y: f.y + window.scrollY };
+  }
+
   function spawnTo(n) {
     const e = env();
-    while (flies.length < n) flies.push(spawnFly(params, e, rng));
+    while (flies.length < n) flies.push(spawnOne(e));
     flies.length = n;
     placed = e.bounds.w > 0 && e.bounds.h > 0;
+  }
+
+  // Page anchoring applies in viewport mode only; a container already scrolls with its content.
+  function applyAnchor() {
+    if (params.anchor === 'page' && overlay.host) warnOnce('anchor', 'anchor "page" is ignored with a container');
+    const page = params.anchor === 'page' && !overlay.host;
+    if (page === overlay.page) return;
+    // Convert between viewport and page coordinates so nothing moves on screen.
+    const dy = page ? window.scrollY : -window.scrollY;
+    flies = flies.map((f) => ({ ...f, y: f.y + dy }));
+    overlay.page = page;
+    overlay.resize();
+    onResize();
   }
 
   function render() {
@@ -82,15 +103,23 @@ export function create(options = {}) {
     overlay.clear();
     if (motion() === 'hide') return;
     const { ctx } = overlay;
+    let shown = flies;
+    if (overlay.page) {
+      // Draw in page coordinates: shift by the scroll and skip flies outside the visible band.
+      const sy = window.scrollY;
+      const m = params.size;
+      ctx.setTransform(overlay.dpr, 0, 0, overlay.dpr, 0, -sy * overlay.dpr);
+      shown = flies.filter((f) => f.y > sy - m && f.y < sy + overlay.view.h + m);
+    }
     if (sheet) {
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
-      for (const f of flies) drawSprite(ctx, sheet, f, params.size);
+      for (const f of shown) drawSprite(ctx, sheet, f, params.size);
     } else {
       const strideBL = meta.clips.walk.strideBL;
-      for (const f of flies) drawProcedural(ctx, f, params.size, strideBL);
+      for (const f of shown) drawProcedural(ctx, f, params.size, strideBL);
     }
-    if (params.debug) drawDebug(ctx, flies, params, cursor());
+    if (params.debug) drawDebug(ctx, shown, params, cursor());
   }
 
   function update(dt) {
@@ -148,6 +177,11 @@ export function create(options = {}) {
     render();
   }
 
+  // Static or paused flies in page mode must follow the content as it scrolls.
+  function onScroll() {
+    if (overlay.page && !running()) render();
+  }
+
   function onVisible(visible) {
     onScreen = visible;
     sync();
@@ -176,9 +210,11 @@ export function create(options = {}) {
     if (overlay) overlay.destroy();
     overlay = createOverlay({ container: params.container, zIndex: params.zIndex, onResize, onVisible });
     onScreen = true;
+    applyAnchor();
   }
 
   document.addEventListener('visibilitychange', sync);
+  window.addEventListener('scroll', onScroll, { passive: true });
   if (mql) mql.addEventListener('change', sync);
 
   buildOverlay();
@@ -199,6 +235,7 @@ export function create(options = {}) {
         flies = [];
       }
       if (params.size !== prev.size) onResize();
+      if (params.anchor !== prev.anchor) applyAnchor();
       if (params.sprite !== prev.sprite) loadSprite();
       spawnTo(params.count);
       sync();
@@ -220,6 +257,7 @@ export function create(options = {}) {
       if (rafId) cancelAnimationFrame(rafId);
       rafId = 0;
       document.removeEventListener('visibilitychange', sync);
+      window.removeEventListener('scroll', onScroll);
       if (mql) mql.removeEventListener('change', sync);
       input.destroy();
       overlay.destroy();
@@ -232,6 +270,8 @@ export function create(options = {}) {
         flies: flies.map((f) => ({ ...f })),
         cursor: destroyed ? null : cursor(),
         bounds: { ...overlay.bounds },
+        anchor: overlay.page ? 'page' : 'viewport',
+        scroll: { y: overlay.page ? window.scrollY : 0 },
         fps,
         renderer: sheet ? 'sprite' : 'procedural',
         sheetUrl: sheet ? (sheet.url.startsWith('data:') ? 'inline' : sheet.url) : null,

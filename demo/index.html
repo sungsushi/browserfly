@@ -39,8 +39,16 @@
   <p><button id="target" type="button">Click me through the flies</button> <span id="clicks">0 clicks</span></p>
   <p>Larvae hatch from eggs laid on rotting fruit, feed for a few days, pupate, and emerge as adults about ten days after the egg was laid at room temperature. This short generation time is a large part of why the fly became a model organism.</p>
   <p>Its genome is compact, its genetics are well mapped, and a whole adult brain has now been reconstructed at synaptic resolution. Simulated bodies such as NeuroMechFly combine that anatomy with physics to study how the nervous system produces walking.</p>
-  <p>Keep scrolling: the overlay stays fixed over the viewport, so the flies keep walking over whatever text is underneath without blocking any clicks.</p>
-  <p style="height: 60vh"></p>
+  <p>Keep scrolling. With <b>anchor: viewport</b> (the default) the flies stay on screen while the text scrolls under them. Switch the panel's anchor to <b>page</b> and they stay where they are on the page instead, scrolling away with the content.</p>
+  <h2>Anatomy</h2>
+  <p>An adult fruit fly has three body parts: a head with large red compound eyes and short antennae, a thorax that carries the six legs and a single pair of wings, and a striped abdomen. Behind the wings sit the halteres, tiny knobbed organs that act as gyroscopes in flight.</p>
+  <p>Each leg has a coxa, trochanter, femur, tibia and a five-segment tarsus ending in claws and adhesive pads, which let flies walk up glass and across ceilings.</p>
+  <h2>Walking</h2>
+  <p>Flies usually walk with a tripod gait: the front and hind legs on one side step together with the middle leg on the other, so three feet are always on the ground. At higher speeds they step about ten to fifteen times a second.</p>
+  <p>Between runs they pause, groom, and turn sharply. Over longer distances, these runs and turns add up to a random walk that can be biased toward attractive odours or away from threats.</p>
+  <h2>Flight</h2>
+  <p>Fruit flies beat their wings about two hundred times a second. They can take off in a few hundredths of a second when startled, choosing a direction away from the looming threat before they leave the ground.</p>
+  <p style="height: 50vh"></p>
   <p>The end.</p>
 </main>
 
@@ -54,6 +62,9 @@
     <div class="inline">
       <label>renderer <select id="sprite"><option value="auto">sprite (auto)</option><option value="procedural">procedural</option></select></label>
       <label><input type="checkbox" id="debug"> debug</label>
+    </div>
+    <div class="inline">
+      <label>anchor <select id="anchor"><option value="viewport">viewport (stay on screen)</option><option value="page">page (scroll with content)</option></select></label>
     </div>
     <div class="inline">
       <label>seed <input type="text" id="seed" placeholder="random" size="8"></label>
@@ -124,6 +135,8 @@
   }
 
   const debugBox = document.getElementById('debug');
+  const anchorSel = document.getElementById('anchor');
+  anchorSel.addEventListener('change', () => { swarm.set({ anchor: anchorSel.value }); refresh(); });
   const spriteSel = document.getElementById('sprite');
   const seedBox = document.getElementById('seed');
   debugBox.addEventListener('change', () => { swarm.set({ debug: debugBox.checked }); refresh(); });
@@ -156,10 +169,11 @@
       c.label.classList.toggle('changed', isChanged);
       if (isChanged) changed[key] = p[key];
     }
-    for (const key of ['sprite', 'debug', 'reducedMotion', 'stopDistribution']) {
+    for (const key of ['sprite', 'debug', 'reducedMotion', 'stopDistribution', 'anchor']) {
       if (p[key] !== schema[key].default) changed[key] = p[key];
     }
     debugBox.checked = p.debug;
+    anchorSel.value = p.anchor;
     spriteSel.value = p.sprite;
     if (p.seed !== null && document.activeElement !== seedBox) seedBox.value = p.seed;
     document.getElementById('changed').value = Object.keys(changed).length ? JSON.stringify(changed, null, 2) : '(none)';
