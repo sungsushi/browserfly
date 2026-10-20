@@ -9,6 +9,8 @@ export default defineConfig({
     include: ['test/unit/**/*.test.js'],
     environment: 'node',
     passWithNoTests: true,
+    // The statistical engine tests simulate millions of steps; coverage instrumentation slows them further.
+    testTimeout: 120000,
     coverage: {
       provider: 'v8',
       include: ['src/**/*.js'],
