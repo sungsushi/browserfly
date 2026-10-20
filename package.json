@@ -10,7 +10,9 @@
     "test:sweep": "node scripts/sweep.mjs",
     "test:e2e": "node esbuild.config.mjs && playwright test",
     "lint": "eslint .",
-    "serve": "node scripts/serve.mjs"
+    "serve": "node scripts/serve.mjs",
+    "docs": "node scripts/params-table.mjs",
+    "docs:check": "node scripts/params-table.mjs --check"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

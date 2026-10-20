@@ -8,10 +8,14 @@ test('1. clean load: no console errors, one click-through canvas', async ({ page
   await page.waitForTimeout(500);
   const info = await page.evaluate(() => {
     const canvases = document.querySelectorAll('canvas');
-    return { n: canvases.length, pe: canvases[0] && getComputedStyle(canvases[0]).pointerEvents };
+    const c = canvases[0];
+    return { n: canvases.length, pe: c && getComputedStyle(c).pointerEvents,
+             hidden: c && c.getAttribute('aria-hidden'), role: c && c.getAttribute('role') };
   });
   expect(info.n).toBe(1);
   expect(info.pe).toBe('none');
+  expect(info.hidden).toBe('true'); // decorative: hidden from assistive technology (M6)
+  expect(info.role).toBe('presentation');
   expect(errors).toEqual([]);
 });
 

@@ -517,6 +517,8 @@ function createOverlay({ container, zIndex, onResize, onVisible }) {
   s.pointerEvents = "none";
   s.zIndex = String(zIndex);
   s.display = "block";
+  canvas.setAttribute("aria-hidden", "true");
+  canvas.setAttribute("role", "presentation");
   if (host && getComputedStyle(host).position === "static") {
     console.warn("[fly] container is position: static; setting it to relative");
     host.style.position = "relative";

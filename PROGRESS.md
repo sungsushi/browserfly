@@ -1,6 +1,6 @@
 # Progress
 
-**Current milestone:** M5 — Sprite renderer integration — ✅ done (committed). Next: M6 — Packaging, docs, GitHub Pages check (not started; waiting for go-ahead).
+**Current milestone:** M6 — Packaging, docs, GitHub Pages check — ✅ done locally (committed). CI not yet run: the repo has no remote. M7 (optional polish) only if asked.
 
 ## Done
 - **M0** — scaffolding (git, package.json scripts, esbuild/vitest/playwright/eslint configs, serve + sweep scripts).
@@ -40,10 +40,17 @@
   - Bundles: `fly.min.js` 7.94 KB gz (budget 8, ~60 B headroom), `fly.inline.min.js` 36.2 KB gz (budget 45). The build now prints budgets.
   - Demo: renderer toggle (sprite / procedural).
 
+- **M6** — `README.md` (usage snippets, files, generated option table, API, behaviour, accessibility, browser support, development, pipeline regeneration, credits with the NeuroMechFly citations FlyGym asks for); `scripts/params-table.mjs` + `npm run docs` / `docs:check` + `test/unit/readme.test.js` (table can't drift); canvas `aria-hidden="true"` + `role="presentation"` (e2e test 1 checks); `.github/workflows/test.yml` (lint, docs check, unit, committed-bundles-match-source, e2e on 3 browsers; no pipeline).
+  - Local run of every CI step: lint ✓, docs check ✓, `npm test` 89/89, build matches committed `dist/`, `npm run test:e2e` 72/72.
+  - Acceptance check: a fresh page with one script tag in a subdirectory, served by `npx serve@14.2.4`: `/sub/` (fly.min.js + sheets) → sprite from `/sub/fly-sheet.webp`, no console messages; `/single/` (fly.inline.min.js only) → sprite, one request.
+  - Final sizes: `fly.min.js` 7.97 KB gz (≤ 8), `fly.inline.min.js` 36.25 KB gz (≤ 45), `fly-sheet.webp` 26.7 KB (≤ 30), `fly-sheet.png` 31.1 KB (≤ 40).
+
 ## Open issues
+- **CI not verified on GitHub:** no git remote is configured, so the workflow has only been validated (YAML) and its steps run locally.
+- **No licence for this repository's own code** (README says so). FlyGym/NeuroMechFly are Apache-2.0 and credited.
 - Sheet budget: met at 64 colours with ~3 KB WebP headroom. Re-rendering at other settings may need 48 colours (18 KB) or fewer frames.
 - Real speed in the chosen stride is 6.9 BL/s with strideBL 0.64; at the rev 4 default of 1.2 BL/s the legs step at ~1.9 Hz (≈ 32 display frames per stride).
-- **`fly.min.js` has ~60 B of headroom under 8 KB gz.** Any M6 runtime addition (e.g. `aria-hidden`) must be paid for; candidates: shorter warning texts, dropping the debug overlay's labels in min builds.
+- **`fly.min.js` has ~30 B of headroom under 8 KB gz.** Any further runtime addition must be paid for (candidates: shorter warning texts, dropping the debug overlay's labels in min builds).
 - E2E filters Chromium's "Failed to load resource" console errors in the 404 test: they come from the network layer, not script.
 - Firefox exceeds the 2 ms soft perf budget with 20 flies (headless Firefox canvas is slower; Chromium/WebKit are ~8× under). Candidate optimisations if it matters: cache the static body as an offscreen bitmap per size and only draw legs per frame.
 - **Test 20 at 120 s is not flake-free — accepted by the user (2026-10-20); a lone test 20 failure is a known flake, rerun.** Over 2000 flies the escape time is median 10 s, p99 69 s, max 114 s, with a roughly exponential tail (×~8 less likely per extra 30 s). Estimated failure rate: ~1.5% per run, ~1 in 4 sweeps (seen on base 16). 180 s would be ~0.02% per run.
