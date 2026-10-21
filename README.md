@@ -1,11 +1,11 @@
 # browserfly
 
-Top-down fruit flies that wander over a web page. They walk in runs and pauses, turn, and can be
+Your very own fruit flies that wander over a web page. They walk in runs and pauses, turn, and can be
 drawn toward the cursor or pushed away from it. The fly is a sprite rendered from
 [NeuroMechFly](https://neuromechfly.org/), a biomechanical model of *Drosophila melanogaster*,
 replaying a recorded real walking stride, so the legs move in a true tripod gait without sliding.
 
-**Live demo:** https://sungsushi.github.io/browserfly/ (once GitHub Pages is enabled for the repo).
+**Live demo:** https://sungsushi.github.io/browserfly/.
 
 One script tag, no dependencies, about 8 KB gzipped (plus a 28 KB sprite sheet, or one 37 KB file
 with the sheet inlined). The overlay never blocks clicks, never scrolls or shifts the layout, and
