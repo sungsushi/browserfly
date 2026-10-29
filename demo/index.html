@@ -53,6 +53,8 @@
   .inline { display: flex; gap: 6px; align-items: center; margin: 6px 0; }
   .inline > * { flex: 1; }
   button.small { font: inherit; padding: 3px 8px; cursor: pointer; }
+  #credit { margin: 8px 0 0; text-align: right; color: var(--muted); }
+  #credit a { color: var(--accent); }
   textarea { width: 100%; height: 90px; font: 11px ui-monospace, Menlo, monospace; resize: vertical; }
   @media (max-width: 640px) { #panel { width: auto; left: 12px; max-height: 45vh; } }
 </style>
@@ -99,6 +101,7 @@
     <p style="margin: 8px 0 2px; color: var(--muted)">Changed from defaults (copy this to report your tuning):</p>
     <textarea id="changed" readonly></textarea>
   </div>
+  <p id="credit">Made by <a href="https://github.com/sungsushi/browserfly" target="_blank" rel="noopener">sungsushi</a></p>
 </aside>
 
 <script src="../dist/fly.js"></script>
@@ -108,7 +111,9 @@
   // the e2e tests and shared links can start from a given configuration.
   const schema = Fly.schema;
   const query = new URLSearchParams(location.search);
-  const options = {};
+  // The demo's own defaults: five flies, and an overlay that sits below the parameter panel (z-index 10).
+  const DEMO_DEFAULTS = { count: 5, zIndex: 5 };
+  const options = { ...DEMO_DEFAULTS };
   for (const [key, raw] of query) {
     const spec = schema[key];
     if (!spec) continue;
@@ -176,7 +181,7 @@
   document.getElementById('reset').addEventListener('click', () => {
     const defaults = {};
     for (const [key, spec] of Object.entries(schema)) if (key !== 'container') defaults[key] = spec.default;
-    swarm.set(defaults);
+    swarm.set({ ...defaults, ...DEMO_DEFAULTS });
     seedBox.value = '';
     refresh();
   });
@@ -197,7 +202,7 @@
     for (const [key, c] of Object.entries(controls)) {
       if (document.activeElement !== c.range) c.range.value = p[key];
       if (document.activeElement !== c.number) c.number.value = p[key];
-      const isChanged = p[key] !== c.spec.default;
+      const isChanged = p[key] !== (key in DEMO_DEFAULTS ? DEMO_DEFAULTS[key] : c.spec.default);
       c.label.classList.toggle('changed', isChanged);
       if (isChanged) changed[key] = p[key];
     }
